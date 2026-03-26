@@ -3,7 +3,7 @@ import http from 'http';
 import ENV from '@src/common/constants/ENV';
 import app from './server';
 import { Server } from "socket.io";
-import type {Card, Player, GameState} from '../../shared/types'
+import type {Card, Player, GameState, SocketResponse} from '../../shared/types'
 
 /******************************************************************************
                                 Constants
@@ -32,40 +32,77 @@ const games = new Map<string, GameState>();
 io.on("connection", (socket) => {
   logger.info(`User Connected: ${socket.id}`);
 
-  socket.on("joinRoom", (roomId) => {
-    socket.join(roomId);
-    if(!games.has(roomId)){
-      games.set(roomId, {
-        id: roomId,
-        players: [],
-        deck: [],
-        discardPile: [],
-        turnId: 0,
-        phase: "started"
-      });
+  socket.on("createRoom", () => {
+    let roomId = Math.floor(Math.random() * 100).toString(); // generate random roomId between 0-99
+    while (games.has(roomId)) { // room id taken
+      roomId = Math.floor(Math.random() * 100).toString();
     }
-    const game = games.get(roomId)!;
-    const isHost = game.players.length == 0;
+    socket.join(roomId);
+    
+    const game: GameState = {
+      id: roomId,
+      players: [],
+      deck: [], // TEMP
+      discardPile: [],
+      turnId: 0,
+      phase: "waiting"
+    };
+    games.set(roomId, game);
+
     const player: Player = {
       id: socket.id,
-      name: "",
+      name: "", // TEMP
       hand: [],
-      isHost: isHost,
-      ready: true
+      isHost: true,
+      ready: false
     };
     game.players.push(player);
-    // add socket to room player list, emit roomUpdate
-    io.to(roomId).emit("playerJoined", game.players)
+
+    io.to(roomId).emit("roomUpdate", game);
   })
+
+  socket.on("joinRoom", (roomId, callback) => {
+    const game = games.get(roomId);
+    if(!game){ // room doesn't exist
+      return callback?.({ error: `Room Id ${roomId} does not exist.` });
+    }
+    socket.join(roomId);
+    
+    if (!game.players.find(p => p.id === socket.id)) { // handles duplicate players
+      const player: Player = {
+        id: socket.id,
+        name: "", // TEMP
+        hand: [],
+        isHost: false,
+        ready: false
+      };
+      game.players.push(player);
+    }
+
+    io.to(roomId).emit("roomUpdate", game)
+    callback?.({ success: true });
+  })
+
+  socket.on("leaveRoom", (roomId, callback) => {
+    const game = games.get(roomId);
+    if (!game) { // room doesn't exist
+      return callback?.({ error: `Room Id ${roomId} does not exist.` });
+    }
+
+    game.players = game.players.filter(p => p.id !== socket.id);
+    if (game.players.length === 0) { // delete rooms with 0 people
+      games.delete(roomId);
+    }
+    socket.leave(roomId);
+
+    io.to(roomId).emit("roomUpdate", game);
+    callback?.({ success: true });
+  });
   
   socket.on("startGame", (roomId) => {
     // create initial GameState, shuffle deck
     const game = games.get(roomId);
     io.to(roomId).emit("gameState", game)
-  })
-
-  socket.on("send_message", (data) => {
-    socket.broadcast.emit("receive_message", data);
   })
 
   socket.on("disconnect", () => {
