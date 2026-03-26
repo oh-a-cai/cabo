@@ -14,7 +14,6 @@ export interface Player{
     name: string;
     hand: Card[];
     isHost: boolean;
-    ready?: boolean;
 }
 
 export interface GameState{
