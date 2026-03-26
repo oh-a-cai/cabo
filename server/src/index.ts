@@ -106,8 +106,19 @@ io.on("connection", (socket) => {
   })
 
   socket.on("disconnect", () => {
+    for (const [roomId, game] of games.entries()) {
+      const prev = game.players.length;
+      game.players = game.players.filter(p => p.id !== socket.id);
+      if (game.players.length !== prev) { // verify disconnect
+        if (game.players.length === 0) {
+          games.delete(roomId);
+        } else {
+          io.to(roomId).emit("roomUpdate", game);
+        }
+      }
+    }
     logger.info(`User Disconnected: ${socket.id}`);
-  })
+  });
 });
 
 server.listen(ENV.Port, () => {

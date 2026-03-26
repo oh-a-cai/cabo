@@ -1,6 +1,6 @@
 export type Suit = "hearts" | "diamonds" | "clubs" | "spades";
 export type Rank = "Jo" | "A" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K";
-export type Action = "discard" | "switch";
+export type Phase = "waiting" | "starting" | "drawing" | "discarding" | "swapping" | "finished";
 export type SocketResponse = { success: true } | { error: string };
 
 export interface Card{
@@ -23,5 +23,5 @@ export interface GameState{
     deck: Card[];
     discardPile: Card[];
     turnId: number;
-    phase: "waiting" | "started"| "drawing" | Action;
+    phase: Phase;
 }

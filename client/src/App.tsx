@@ -40,11 +40,17 @@ function App() {
   }
 
   useEffect(() => {
-    socket.on("roomUpdate", (game: GameState) =>{
+    const handler = (game: GameState) => {
       setRoom(game.id);
       setPlayerList(game.players);
-    });
-  }, [socket])
+    };
+  
+    socket.on("roomUpdate", handler);
+  
+    return () => {
+      socket.off("roomUpdate", handler);
+    };
+  }, []);
 
   return (
     <div className="App">
