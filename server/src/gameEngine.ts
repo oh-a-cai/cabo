@@ -6,6 +6,7 @@ const RANK_VALUES: number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 export function createDeck(): Card[] {
   const deck: Card[] = []
+
   for (const suit of SUITS) {
     if (suit === "Hearts" || suit === "Spades") {
       deck.push({
@@ -15,6 +16,7 @@ export function createDeck(): Card[] {
         value: 0
       });
     }
+
     let i = 1;
     for (const rank of RANKS) {
       deck.push({
@@ -26,11 +28,16 @@ export function createDeck(): Card[] {
       i++;
     }
   }
-  console.log(deck);
+
   return deck;
 }
 
 export function shuffleDeck(deck: Card[]): Card[] {
+  for (let i = deck.length - 1; i > 0; i--) { // fisher yates shuffle algorithm
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+
   return deck;
 }
   
@@ -41,7 +48,6 @@ export function startGame(game: GameState) {
 
   for (const player of game.players) { // deal cards
     player.hand = game.deck.splice(0, 4);
-    console.log(player.hand)
   }
   
   return game;

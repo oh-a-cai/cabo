@@ -33,22 +33,37 @@ export default function Game() {
   if (!gameState) {
     return <p>Loading game...</p>;
   }
+
+  const me = gameState.players.find(player => player.id === socket.id);
+  const others = gameState.players.filter(player => player.id !== socket.id);  
   
   return (
     <div>
       <h1>Room: {roomId}</h1>
       <h2>Phase: {gameState.phase}</h2>
-      <h3>Players:</h3>
-      <ul>
-        {gameState.players.map((player) => (
-          <li key={player.id}>
-            {player.id}
-            {player.id === socket.id ? " (You)" : ""}
-          </li>
-        ))}
-      </ul>
       <h3>Deck: {gameState.deck.length} cards remaining</h3>
+      <h4>Next Card: {gameState.deck[0].id}</h4>
       <h3>Discard Pile: {gameState.discardPile.length} cards</h3>
+      <h3>Turn: {gameState.turnId}</h3>
+      <div>
+        <h2>Your Hand</h2>
+        {me?.hand.map((card) => (
+          <div>
+            {card.id}
+          </div>
+        ))}
+        <h2>Other Players</h2>
+        {others.map(player => (
+          <div>
+            <p>{player.id}'s Hand</p>
+            {player.hand.map((card) => (
+            <div>
+              {card.id}
+            </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

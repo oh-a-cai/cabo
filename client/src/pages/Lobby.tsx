@@ -66,7 +66,7 @@ export default function Lobby() {
       <h2>Players</h2>
       <ul>
         {players.map((player) => (
-          <li key={player.id}>{player.id}</li>
+          <li key={player.id}>{player.id} {player.isHost ? " [Host]" : ""} {player.id === socket.id ? " (You)" : ""}</li>
         ))}
       </ul>
       <button onClick={leaveRoom}>Leave Room</button>
