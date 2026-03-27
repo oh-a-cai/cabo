@@ -17,7 +17,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       const game: GameState = {
         id: roomId,
         players: [],
-        deck: [], // TEMP
+        deck: [],
         discardPile: [],
         turnId: 0,
         phase: "waiting"
@@ -74,16 +74,27 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       io.to(roomId).emit("roomUpdate", game);
       callback?.({ success: true });
     });
-    
+
     socket.on("startGame", (roomId: string) => {
       const game = games.get(roomId);
-      if (!game) return;
+      if (!game) {
+        return;
+      }
     
       startGame(game);
     
       io.to(roomId).emit("gameState", game);
     });
-  
+
+    socket.on("getGameState", (roomId: string, callback) => { // listens for a ping
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: `Room ${roomId} does not exist.` });
+      }
+
+      callback?.(game); // returns gameState as response
+    });
+    
     socket.on("disconnect", () => {
       for (const [roomId, game] of games.entries()) {
         const prev = game.players.length;
