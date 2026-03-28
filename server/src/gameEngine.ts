@@ -1,4 +1,4 @@
-import type { GameState, Player, Card, Suit, Rank } from "./../../shared/types";
+import type { GameState, Player, Card, Suit, Rank, SocketResponse } from "./../../shared/types";
 
 const SUITS: Suit[] = ["Hearts", "Diamonds", "Clubs", "Spades"];
 const RANKS: Rank[] = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K"];
@@ -43,12 +43,106 @@ export function shuffleDeck(deck: Card[]): Card[] {
   
 export function startGame(game: GameState) {
   game.deck = shuffleDeck(createDeck());
-  game.phase = 'starting';
+  game.gamePhase = "playing";
   game.turnId = 0;
 
   for (const player of game.players) { // deal cards
     player.hand = game.deck.splice(0, 4);
   }
+}
+
+export function drawCard(game: GameState, playerId: string): SocketResponse {
+  if (game.gamePhase !== "playing") {
+    return { error: "Game not in progress" };
+  }
+  if (game.turnPhase !== "drawing") {
+    return { error: "Must be in drawing phase" };
+  }
+
+  const player = game.players.find(p => p.id === playerId);
+  const currentPlayer = game.players[game.turnId];
+
+  if (!player) {
+    return { error: "Player not found" };
+  }
+  if (currentPlayer.id !== playerId) {
+    return { error: "Not your turn" };
+  }
+  if (game.deck.length === 0) {
+    return { error: "Deck is empty" };
+  }
   
-  return game;
+  player.drawnCard = game.deck.pop()!;
+  game.turnPhase = "action";
+    
+  return { success: true };
+}
+
+export function discardCard(game: GameState, playerId: string): SocketResponse {
+  if (game.gamePhase !== "playing") {
+    return { error: "Game not in progress" };
+  }
+  if (game.turnPhase !== "action") {
+    return { error: "Must be in action phase" };
+  }
+
+  const player = game.players.find(p => p.id === playerId);
+  const currentPlayer = game.players[game.turnId];
+  
+  if (!player) {
+    return { error: "Player not found" };
+  }
+  if (currentPlayer.id !== playerId) {
+    return { error: "Not your turn" };
+  }
+  if (!player.drawnCard) {
+    return { error: "No card to discard" };
+  }
+  
+  game.discardPile.push(player.drawnCard);
+  player.drawnCard = undefined;
+  nextTurn(game);
+  game.turnPhase = "drawing";
+    
+  return { success: true };
+}
+
+export function swapCard(game: GameState, playerId: string, cardId: string): SocketResponse {
+  if (game.gamePhase !== "playing") {
+    return { error: "Game not in progress" };
+  }
+  if (game.turnPhase !== "action") {
+    return { error: "Must be in action phase" };
+  }
+    
+  const player = game.players.find(p => p.id === playerId);
+  const currentPlayer = game.players[game.turnId];
+      
+  if (!player) {
+    return { error: "Player not found" };
+  }
+  if (currentPlayer.id !== playerId) {
+    return { error: "Not your turn" };
+  }
+  if (!player.drawnCard) {
+    return { error: "No card to swap" };
+  }
+
+  const index = player.hand.findIndex(c => c.id === cardId);
+  if (index === -1) {
+    return { error: "Card not in hand" };
+  }
+  const cardCopy = player.hand[index];
+      
+  player.hand[index] = player.drawnCard;
+  game.discardPile.push(cardCopy);
+  player.drawnCard = undefined
+  nextTurn(game);
+  game.turnPhase = "drawing";
+        
+  return { success: true };
+}
+
+export function nextTurn(game: GameState) {
+  game.turnId = (game.turnId + 1) % game.players.length;
 }

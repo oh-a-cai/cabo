@@ -1,6 +1,6 @@
 import logger from 'jet-logger';
 import { Server, Socket } from "socket.io";
-import { startGame } from "./gameEngine";
+import { startGame, drawCard, discardCard, swapCard } from "./gameEngine";
 import type { GameState, Player, SocketResponse } from "./../../shared/types";
 
 export function initializeSockets(io: Server, games: Map<string, GameState>) {
@@ -20,7 +20,8 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         deck: [],
         discardPile: [],
         turnId: 0,
-        phase: "waiting"
+        gamePhase: "waiting",
+        turnPhase: "drawing"
       };
       games.set(roomId, game);
   
@@ -28,6 +29,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         id: socket.id,
         name: "", // TEMP
         hand: [],
+        drawnCard: undefined,
         isHost: true
       };
       game.players.push(player);
@@ -47,6 +49,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
           id: socket.id,
           name: "", // TEMP
           hand: [],
+          drawnCard: undefined,
           isHost: false
         };
         game.players.push(player);
@@ -84,6 +87,51 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       startGame(game);
     
       io.to(roomId).emit("gameState", game);
+    });
+
+    socket.on("drawCard", (roomId: string, callback: (res: SocketResponse) => void) => {
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: "Room not found" });
+      }
+      
+      const response = drawCard(game, socket.id);
+      if ("error" in response) {
+        return callback?.(response);
+      }
+      
+      io.to(roomId).emit("gameState", game);
+      callback?.({ success: true });
+    });
+
+    socket.on("discardCard", (roomId: string, callback: (res: SocketResponse) => void) => {
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: "Room not found" });
+      }
+      
+      const response = discardCard(game, socket.id);
+      if ("error" in response) {
+        return callback?.(response);
+      }
+      
+      io.to(roomId).emit("gameState", game);
+      callback?.({ success: true });
+    });
+
+    socket.on("swapCard", (roomId: string, cardId: string, callback: (res: SocketResponse) => void) => {
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: "Room not found" });
+      }
+      
+      const response = swapCard(game, socket.id, cardId);
+      if ("error" in response) {
+        return callback?.(response);
+      }
+      
+      io.to(roomId).emit("gameState", game);
+      callback?.({ success: true });
     });
 
     socket.on("getGameState", (roomId: string, callback) => { // listens for a ping
