@@ -143,6 +143,49 @@ export function swapCard(game: GameState, playerId: string, cardId: string): Soc
   return { success: true };
 }
 
+export function matchCard(game: GameState, playerId: string, cardId: string): SocketResponse {
+  if (game.gamePhase !== "playing") {
+    return { error: "Game not in progress" };
+  }
+  if (game.turnPhase !== "drawing") {
+    return { error: "Must be in drawing phase" };
+  }
+    
+  const player = game.players.find(p => p.id === playerId);
+  if (!player) {
+    return { error: "Player not found" };
+  }
+  if (game.isCardMatched) {
+    return { error: "Card already matched by another player" };
+  }
+
+  const index = player.hand.findIndex(c => c.id === cardId);
+  if (index === -1) {
+    return { error: "Card not in hand" };
+  }
+  const cardToMatch = player.hand[index];
+  const topDiscardCard = game.discardPile[game.discardPile.length - 1];
+  if (!topDiscardCard) {
+    return { error: "Discard pile is empty" }
+  }
+
+  if (cardToMatch.rank === topDiscardCard.rank) {
+    game.isCardMatched = true;
+    const [discardedCard] = player.hand.splice(index, 1);
+    game.discardPile.push(discardedCard);
+  }
+  else {
+    if (game.deck.length > 0 && !player.hasBurned) {
+      player.hand.push(game.deck.pop()!)
+      player.hasBurned = true;
+    }
+  }
+        
+  return { success: true };
+}
+
 export function nextTurn(game: GameState) {
   game.turnId = (game.turnId + 1) % game.players.length;
+  game.isCardMatched = false;
+  game.players.forEach(player => player.hasBurned = false);
 }

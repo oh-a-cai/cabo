@@ -17,6 +17,7 @@ export interface Player{
     hand: Card[];
     drawnCard?: Card;
     isHost: boolean;
+    hasBurned: boolean;
 }
 
 export interface GameState{
@@ -27,4 +28,5 @@ export interface GameState{
     turnId: number;
     gamePhase: GamePhase;
     turnPhase: TurnPhase;
+    isCardMatched: boolean;
 }

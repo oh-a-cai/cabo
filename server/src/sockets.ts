@@ -1,6 +1,6 @@
 import logger from 'jet-logger';
 import { Server, Socket } from "socket.io";
-import { startGame, drawCard, discardCard, swapCard } from "./gameEngine";
+import { startGame, drawCard, discardCard, swapCard, matchCard } from "./gameEngine";
 import type { GameState, Player, SocketResponse } from "./../../shared/types";
 
 export function initializeSockets(io: Server, games: Map<string, GameState>) {
@@ -21,7 +21,8 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         discardPile: [],
         turnId: 0,
         gamePhase: "waiting",
-        turnPhase: "drawing"
+        turnPhase: "drawing",
+        isCardMatched: false
       };
       games.set(roomId, game);
   
@@ -30,7 +31,8 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         name: "", // TEMP
         hand: [],
         drawnCard: undefined,
-        isHost: true
+        isHost: true,
+        hasBurned: false
       };
       game.players.push(player);
 
@@ -50,7 +52,8 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
           name: "", // TEMP
           hand: [],
           drawnCard: undefined,
-          isHost: false
+          isHost: false,
+          hasBurned: false
         };
         game.players.push(player);
       }
@@ -126,6 +129,21 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       }
       
       const response = swapCard(game, socket.id, cardId);
+      if ("error" in response) {
+        return callback?.(response);
+      }
+      
+      io.to(roomId).emit("gameState", game);
+      callback?.({ success: true });
+    });
+
+    socket.on("matchCard", (roomId: string, cardId: string, callback: (res: SocketResponse) => void) => {
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: "Room not found" });
+      }
+      
+      const response = matchCard(game, socket.id, cardId);
       if ("error" in response) {
         return callback?.(response);
       }

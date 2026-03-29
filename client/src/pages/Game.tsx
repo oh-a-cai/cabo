@@ -63,6 +63,26 @@ export default function Game() {
       }
     });
   };
+
+  const handleMatchCard = (cardId: string) => {
+    socket.emit("matchCard", roomId, cardId, (response: SocketResponse) => {
+      if ("error" in response) {
+        alert(response.error);
+      }
+    });
+  };
+
+  const handleCardClick = (cardId: string) => {
+    if (canAct && me.drawnCard) {
+      handleSwap(cardId);
+    } 
+    else if (gameState.turnPhase === "drawing") {
+      handleMatchCard(cardId);
+    } 
+    else {
+      alert("You cannot act on this card right now");
+    }
+  };
   
   return (
     <div>
@@ -71,13 +91,14 @@ export default function Game() {
       <h3>Deck: {gameState.deck.length} cards remaining</h3>
       <h4>Next Card: {gameState.deck.at(-1)?.id}</h4>
       <h3>Discard Pile: {gameState.discardPile.length} cards</h3>
+      <h4>Top Card: {gameState.discardPile.at(-1)?.id}</h4>
       <h3>Turn: {gameState.turnId}</h3>
       <h4>Turn phase: {gameState.turnPhase}</h4>
       <div>
         <h2>Your Hand</h2>
         <div>
           {me?.hand.map(card => (
-            <div onClick={() => canAct && me.drawnCard && handleSwap(card.id)}>{card.id}</div>
+            <div onClick={() => handleCardClick(card.id)}>{card.id}</div>
           ))}
         </div>
 
