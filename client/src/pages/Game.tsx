@@ -83,6 +83,42 @@ export default function Game() {
       alert("You cannot act on this card right now");
     }
   };
+
+  const handleCallCabo = () => {
+    socket.emit("callCabo", roomId, (response: SocketResponse) => {
+      if ("error" in response) {
+        alert(response.error);
+      }
+    });
+  };
+
+  if (gameState.gamePhase === "finished") {
+    return (
+      <div>
+        <h1>{gameState.winner === socket.id ? "You won!" : `${gameState.winner} won!`}</h1>
+        <h2>Results</h2>
+        {gameState.results.map((result, index) => (
+          <div>
+            <p>#{index+1} — {result.playerId} {result.playerId === socket.id ? " (You)" : ""}</p>
+
+            <p>Score: {result.score}</p>
+            <p>Hand:</p>
+            <div>
+              {result.playerHand.map(card => (
+                <div>{card.id}</div>
+              ))}
+            </div>
+
+            {result.caboPenalty && (
+                <p>Cabo penalty applied (+10)</p>
+            )}
+          </div>
+        ))}
+  
+        <button onClick={() => navigate(`/room/${roomId}`)}>Back to Lobby</button>
+      </div>
+    );
+  }
   
   return (
     <div>
@@ -92,8 +128,15 @@ export default function Game() {
       <h4>Next Card: {gameState.deck.at(-1)?.id}</h4>
       <h3>Discard Pile: {gameState.discardPile.length} cards</h3>
       <h4>Top Card: {gameState.discardPile.at(-1)?.id}</h4>
-      <h3>Turn: {gameState.turnId}</h3>
+      <h3>Current Turn: {gameState.players[gameState.turnId]?.id}</h3>
       <h4>Turn phase: {gameState.turnPhase}</h4>
+      {gameState.isCaboCalled && (
+        <div>
+          <h2>{gameState.caboCaller!.id} has called Cabo!</h2>
+            <p>Remaining turns: {gameState.remainingTurns!+1}</p>
+        </div>
+      )}
+
       <div>
         <h2>Your Hand</h2>
         <div>
@@ -129,6 +172,9 @@ export default function Game() {
 
         <div>
           <button onClick={handleDrawCard} disabled={!canDraw}>Draw Card</button>
+        </div>
+        <div>
+          <button onClick={handleCallCabo} disabled={!canDraw || gameState.isCaboCalled}>Call Cabo</button>
         </div>
       </div>
     </div>

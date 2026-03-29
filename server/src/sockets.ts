@@ -1,6 +1,6 @@
 import logger from 'jet-logger';
 import { Server, Socket } from "socket.io";
-import { startGame, drawCard, discardCard, swapCard, matchCard } from "./gameEngine";
+import { startGame, drawCard, discardCard, swapCard, matchCard, callCabo } from "./gameEngine";
 import type { GameState, Player, SocketResponse } from "./../../shared/types";
 
 export function initializeSockets(io: Server, games: Map<string, GameState>) {
@@ -22,7 +22,12 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         turnId: 0,
         gamePhase: "waiting",
         turnPhase: "drawing",
-        isCardMatched: false
+        isCardMatched: false,
+        isCaboCalled: false,
+        caboCaller: undefined,
+        remainingTurns: undefined,
+        results: [],
+        winner: ""
       };
       games.set(roomId, game);
   
@@ -144,6 +149,21 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       }
       
       const response = matchCard(game, socket.id, cardId);
+      if ("error" in response) {
+        return callback?.(response);
+      }
+      
+      io.to(roomId).emit("gameState", game);
+      callback?.({ success: true });
+    });
+
+    socket.on("callCabo", (roomId: string, callback: (res: SocketResponse) => void) => {
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: "Room not found" });
+      }
+      
+      const response = callCabo(game, socket.id);
       if ("error" in response) {
         return callback?.(response);
       }

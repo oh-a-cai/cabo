@@ -43,11 +43,21 @@ export function shuffleDeck(deck: Card[]): Card[] {
   
 export function startGame(game: GameState) {
   game.deck = shuffleDeck(createDeck());
-  game.gamePhase = "playing";
+  game.discardPile = [];
   game.turnId = 0;
+  game.gamePhase = "playing";
+  game.turnPhase = "drawing";
+  game.isCardMatched = false;
+  game.isCaboCalled = false;
+  game.caboCaller = undefined;
+  game.remainingTurns = undefined;
+  game.results = [];
+  game.winner = "";
 
   for (const player of game.players) { // deal cards
     player.hand = game.deck.splice(0, 4);
+    player.drawnCard = undefined;
+    player.hasBurned = false;
   }
 }
 
@@ -103,6 +113,11 @@ export function discardCard(game: GameState, playerId: string): SocketResponse {
   player.drawnCard = undefined;
   nextTurn(game);
   game.turnPhase = "drawing";
+
+  if (game.deck.length === 0) {
+    endGame(game);
+    return { success: true };
+  }
     
   return { success: true };
 }
@@ -139,6 +154,10 @@ export function swapCard(game: GameState, playerId: string, cardId: string): Soc
   player.drawnCard = undefined
   nextTurn(game);
   game.turnPhase = "drawing";
+
+  if (player.hand.length === 0) {
+    endGame(game);
+  }
         
   return { success: true };
 }
@@ -180,6 +199,10 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
       player.hasBurned = true;
     }
   }
+
+  if (player.hand.length === 0) {
+    endGame(game);
+  }
         
   return { success: true };
 }
@@ -188,4 +211,62 @@ export function nextTurn(game: GameState) {
   game.turnId = (game.turnId + 1) % game.players.length;
   game.isCardMatched = false;
   game.players.forEach(player => player.hasBurned = false);
+
+  if (game.isCaboCalled && game.remainingTurns !== undefined) {
+    if (game.remainingTurns > 0) {
+      game.remainingTurns--;
+    }
+    else {
+      endGame(game);
+    }
+  }
+}
+
+export function callCabo(game: GameState, playerId: string): SocketResponse {
+  if (game.gamePhase !== "playing") {
+    return { error: "Game not in progress" };
+  }
+  if (game.turnPhase !== "drawing") {
+    return { error: "Must be in drawing phase" };
+  }
+  if (game.isCaboCalled) {
+    return { error: "Cabo already called" };
+  }
+
+  const player = game.players.find(p => p.id === playerId);
+  if (!player) {
+    return { error: "Player not found" };
+  }
+
+  game.isCaboCalled = true;
+  game.caboCaller = player;
+  game.remainingTurns = game.players.length - 1;
+  nextTurn(game);
+
+  return { success: true };
+}
+
+export function endGame(game: GameState) {
+  game.gamePhase = "finished";
+
+  const scores = game.players.map(player => ({
+    playerId: player.id,
+    score: player.hand.reduce((sum, card) => sum + card.value, 0),
+    playerHand: player.hand,
+    caboPenalty: false
+  }));
+
+  if (game.caboCaller) {
+    const caller = scores.find(p => p.playerId === game.caboCaller!.id);
+    const minScore = Math.min(...scores.map(p => p.score));
+
+    if (caller!.score !== minScore) {
+      caller!.score += 10;
+      caller!.caboPenalty = true
+    }
+  }
+
+  scores.sort((a, b) => a.score - b.score);
+  game.winner = scores[0].playerId;
+  game.results = scores;
 }
