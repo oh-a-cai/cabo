@@ -9,12 +9,14 @@ export type PlayerResult = {
     playerHand: Card[];
     caboPenalty: boolean;
 };
+export type Visibility = "hidden" | "owner" | "all";
 
 export interface Card{
     id: string;
     suit: Suit;
     rank: Rank;
     value: number;
+    visibility: Visibility;
 };
 
 export interface Player{

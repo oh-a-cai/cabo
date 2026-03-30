@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../clientSocket/socket";
-import type { GameState, SocketResponse } from "../../../shared/types";
+import type { GameState, Card, SocketResponse } from "../../../shared/types";
 
 export default function Game() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -41,6 +41,9 @@ export default function Game() {
   const canAct = isMyTurn && gameState.turnPhase === "action";
 
   const handleDrawCard = () => {
+    if (!canDraw) {
+      return;
+    }
     socket.emit("drawCard", roomId, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
@@ -92,6 +95,18 @@ export default function Game() {
     });
   };
 
+  const getCardImage = (card: Card, ownerId: string) => {
+    const isMe = ownerId === socket.id;
+    
+    const isVisible = card.visibility === "all" || (card.visibility === "owner" && isMe);
+    
+    if (!isVisible) {
+      return "/Deck_of_cards/back.png";
+    }
+  
+    return `/Deck_of_cards/${card.id}.png`;
+  };
+
   if (gameState.gamePhase === "finished") {
     return (
       <div>
@@ -105,7 +120,11 @@ export default function Game() {
             <p>Hand:</p>
             <div>
               {result.playerHand.map(card => (
-                <div>{card.id}</div>
+                <img
+                  src={getCardImage(card, result.playerId)}
+                  alt={card.id}
+                  className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
+                />
               ))}
             </div>
 
@@ -125,9 +144,28 @@ export default function Game() {
       <h1>Room: {roomId}</h1>
       <h2>Game Phase: {gameState.gamePhase}</h2>
       <h3>Deck: {gameState.deck.length} cards remaining</h3>
-      <h4>Next Card: {gameState.deck.at(-1)?.id}</h4>
+      {gameState.deck.at(-1) && (
+        <div>
+          <img
+            src={getCardImage(gameState.deck.at(-1)!, "deck")}
+            alt="top of deck"
+            onClick={handleDrawCard}
+            className={`w-20 h-28 rounded-lg shadow-md hover:scale-110 hover:shadow-xl transition-transform duration-200 ${!canDraw ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          />
+          <span>Click the deck to draw!</span>
+        </div>
+      )}
       <h3>Discard Pile: {gameState.discardPile.length} cards</h3>
-      <h4>Top Card: {gameState.discardPile.at(-1)?.id}</h4>
+      {gameState.discardPile.at(-1) && (
+        <div>
+          <img
+            src={getCardImage(gameState.discardPile.at(-1)!, "discard")}
+            alt="top of discard pile"
+            className={`w-20 h-28 rounded-lg shadow-md hover:scale-110 hover:shadow-xl transition-transform duration-200 ${!canDraw ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          />
+          <span>Click the discard pile to draw! (will be revealed to everyone)</span>
+        </div>
+      )}
       <h3>Current Turn: {gameState.players[gameState.turnId]?.id}</h3>
       <h4>Turn phase: {gameState.turnPhase}</h4>
       {gameState.isCaboCalled && (
@@ -136,23 +174,33 @@ export default function Game() {
             <p>Remaining turns: {gameState.remainingTurns!+1}</p>
         </div>
       )}
+      <div>
+        <button onClick={handleCallCabo} disabled={!canDraw || gameState.isCaboCalled}>Call Cabo</button>
+      </div>
 
       <div>
         <h2>Your Hand</h2>
         <div>
           {me?.hand.map(card => (
-            <div onClick={() => handleCardClick(card.id)}>{card.id}</div>
+            <img
+              src={getCardImage(card, me!.id)}
+              alt={card.id}
+              onClick={() => handleCardClick(card.id)}
+              className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
+            />
           ))}
         </div>
 
         {me?.drawnCard && (
           <div>
             <h3>Drawn Card:</h3>
-            {me.drawnCard.id}
-            <div>
-              <button onClick={handleDiscard} disabled={!canAct}>Discard</button>
-              <span> (Click a card in your hand to swap)</span>
-            </div>
+            <img
+              src={getCardImage(me.drawnCard, me!.id)}
+              alt={me.drawnCard.id}
+              onClick={handleDiscard}
+              className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
+            />
+            <span>Click the drawn card to discard, or click a card in your hand to swap</span>
           </div>
         )}
 
@@ -163,18 +211,15 @@ export default function Game() {
               <p>{player.id}'s Hand</p>
               <div>
                 {player.hand.map(card => (
-                  <div>{card.id}</div>
+                  <img
+                    src={getCardImage(card, player.id)}
+                    alt={card.id}
+                    className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
+                  />
                 ))}
               </div>
             </div>
           ))}
-        </div>
-
-        <div>
-          <button onClick={handleDrawCard} disabled={!canDraw}>Draw Card</button>
-        </div>
-        <div>
-          <button onClick={handleCallCabo} disabled={!canDraw || gameState.isCaboCalled}>Call Cabo</button>
         </div>
       </div>
     </div>

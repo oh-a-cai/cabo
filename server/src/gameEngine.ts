@@ -8,26 +8,34 @@ export function createDeck(): Card[] {
   const deck: Card[] = []
 
   for (const suit of SUITS) {
-    if (suit === "Hearts" || suit === "Spades") {
-      deck.push({
-        id: `Z${suit[0]}`,
-        suit,
-        rank: 'Z',
-        value: 0
-      });
-    }
-
     let i = 1;
     for (const rank of RANKS) {
       deck.push({
         id: `${rank}${suit[0]}`,
         suit,
         rank,
-        value: RANK_VALUES[i]
+        value: RANK_VALUES[i],
+        visibility: "hidden"
       });
       i++;
     }
   }
+
+  // jokers
+  deck.push({
+    id: 'ZH',
+    suit: 'Hearts',
+    rank: 'Z',
+    value: 0,
+    visibility: "hidden"
+  });
+  deck.push({
+    id: 'ZS',
+    suit: 'Spades',
+    rank: 'Z',
+    value: 0,
+    visibility: "hidden"
+  });
 
   return deck;
 }
@@ -56,6 +64,7 @@ export function startGame(game: GameState) {
 
   for (const player of game.players) { // deal cards
     player.hand = game.deck.splice(0, 4);
+    player.hand.map(card => card.visibility = "owner");
     player.drawnCard = undefined;
     player.hasBurned = false;
   }
@@ -83,6 +92,7 @@ export function drawCard(game: GameState, playerId: string): SocketResponse {
   }
   
   player.drawnCard = game.deck.pop()!;
+  player.drawnCard.visibility = "owner";
   game.turnPhase = "action";
     
   return { success: true };
@@ -109,6 +119,7 @@ export function discardCard(game: GameState, playerId: string): SocketResponse {
     return { error: "No card to discard" };
   }
   
+  player.drawnCard.visibility = "all";
   game.discardPile.push(player.drawnCard);
   player.drawnCard = undefined;
   nextTurn(game);
@@ -148,8 +159,11 @@ export function swapCard(game: GameState, playerId: string, cardId: string): Soc
     return { error: "Card not in hand" };
   }
   const cardCopy = player.hand[index];
+  cardCopy.visibility = "all";
       
+  player.drawnCard.visibility = "hidden";
   player.hand[index] = player.drawnCard;
+  
   game.discardPile.push(cardCopy);
   player.drawnCard = undefined
   nextTurn(game);
@@ -191,11 +205,14 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
   if (cardToMatch.rank === topDiscardCard.rank) {
     game.isCardMatched = true;
     const [discardedCard] = player.hand.splice(index, 1);
+    discardedCard.visibility = "all";
     game.discardPile.push(discardedCard);
   }
   else {
     if (game.deck.length > 0 && !player.hasBurned) {
-      player.hand.push(game.deck.pop()!)
+      const drawnCard = game.deck.pop()!;
+      drawnCard.visibility = "hidden";
+      player.hand.push(drawnCard);
       player.hasBurned = true;
     }
   }
@@ -248,6 +265,12 @@ export function callCabo(game: GameState, playerId: string): SocketResponse {
 
 export function endGame(game: GameState) {
   game.gamePhase = "finished";
+  
+  game.players.forEach(player => {
+    player.hand.forEach(card => {
+      card.visibility = "all";
+    });
+  });
 
   const scores = game.players.map(player => ({
     playerId: player.id,

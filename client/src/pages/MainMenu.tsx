@@ -1,8 +1,7 @@
-import io from 'socket.io-client';
 import { Navbar } from '../components/Navbar';
-import { useEffect, useState } from 'react';
-import { useNavigate, NavLink } from 'react-router-dom';
-import type {Card, Player, GameState, SocketResponse} from '../../../shared/types';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import type {GameState, SocketResponse} from '../../../shared/types';
 import { socket } from '../clientSocket/socket';
 
 export default function MainMenu() {
