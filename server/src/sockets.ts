@@ -1,6 +1,6 @@
 import logger from 'jet-logger';
 import { Server, Socket } from "socket.io";
-import { startGame, drawCard, discardCard, swapCard, matchCard, callCabo } from "./gameEngine";
+import { startGame, playerReady, drawCard, discardCard, swapCard, matchCard, callCabo } from "./gameEngine";
 import type { GameState, Player, SocketResponse } from "./../../shared/types";
 
 export function initializeSockets(io: Server, games: Map<string, GameState>) {
@@ -37,7 +37,8 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         hand: [],
         drawnCard: undefined,
         isHost: true,
-        hasBurned: false
+        hasBurned: false,
+        ready: false,
       };
       game.players.push(player);
 
@@ -58,7 +59,8 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
           hand: [],
           drawnCard: undefined,
           isHost: false,
-          hasBurned: false
+          hasBurned: false,
+          ready: false
         };
         game.players.push(player);
       }
@@ -97,13 +99,28 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       io.to(roomId).emit("gameState", game);
     });
 
-    socket.on("drawCard", (roomId: string, callback: (res: SocketResponse) => void) => {
+    socket.on("playerReady", (roomId: string, callback: (res: SocketResponse) => void) => {
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: "Room not found" });
+      }
+    
+      const response = playerReady(game, socket.id);
+      if ("error" in response) {
+        return callback?.(response);
+      }
+    
+      io.to(roomId).emit("gameState", game);
+      callback?.({ success: true });
+    });
+
+    socket.on("drawCard", (roomId: string, source: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
       }
       
-      const response = drawCard(game, socket.id);
+      const response = drawCard(game, socket.id, source);
       if ("error" in response) {
         return callback?.(response);
       }

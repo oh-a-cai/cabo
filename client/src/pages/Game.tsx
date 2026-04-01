@@ -39,12 +39,34 @@ export default function Game() {
   const isMyTurn = gameState.players[gameState.turnId].id === me?.id;
   const canDraw = isMyTurn && gameState.turnPhase === "drawing";
   const canAct = isMyTurn && gameState.turnPhase === "action";
+  const readyCount = gameState.players.filter(p => p.ready).length;
+  const totalPlayers = gameState.players.length;
+  const isReady = me?.ready === true;
 
-  const handleDrawCard = () => {
+  const handleReady = () => {
+    socket.emit("playerReady", roomId, (response: SocketResponse) => {
+      if ("error" in response) {
+        alert(response.error);
+      }
+    });
+  };
+  
+  const handleDrawFromDeck = () => {
     if (!canDraw) {
       return;
     }
-    socket.emit("drawCard", roomId, (response: SocketResponse) => {
+    socket.emit("drawCard", roomId, "deck", (response: SocketResponse) => {
+      if ("error" in response) {
+        alert(response.error);
+      }
+    });
+  };
+
+  const handleDrawFromDiscard = () => {
+    if (!canDraw) {
+      return;
+    }
+    socket.emit("drawCard", roomId, "discard", (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
       }
@@ -106,6 +128,26 @@ export default function Game() {
   
     return `/Deck_of_cards/${card.id}.png`;
   };
+  
+  if (gameState.gamePhase === "setup") {
+    return (
+      <div>
+        <h1>Peek Phase</h1>
+        <p>You can see your bottom 2 cards. Memorize them!</p>
+        <p>Players Ready: {readyCount} / {totalPlayers}</p>
+        <div>
+          {me?.hand.map(card => (
+            <img
+              src={getCardImage(card, me.id)}
+              className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
+            />
+          ))}
+        </div>
+  
+        <button onClick={handleReady} disabled={isReady}>{isReady ? "Ready" : "Ready up"}</button>
+      </div>
+    );
+  }
 
   if (gameState.gamePhase === "finished") {
     return (
@@ -149,7 +191,7 @@ export default function Game() {
           <img
             src={getCardImage(gameState.deck.at(-1)!, "deck")}
             alt="top of deck"
-            onClick={handleDrawCard}
+            onClick={handleDrawFromDeck}
             className={`w-20 h-28 rounded-lg shadow-md hover:scale-110 hover:shadow-xl transition-transform duration-200 ${!canDraw ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
           />
           <span>Click the deck to draw!</span>
@@ -161,6 +203,7 @@ export default function Game() {
           <img
             src={getCardImage(gameState.discardPile.at(-1)!, "discard")}
             alt="top of discard pile"
+            onClick={handleDrawFromDiscard}
             className={`w-20 h-28 rounded-lg shadow-md hover:scale-110 hover:shadow-xl transition-transform duration-200 ${!canDraw ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
           />
           <span>Click the discard pile to draw! (will be revealed to everyone)</span>

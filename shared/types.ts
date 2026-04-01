@@ -1,6 +1,6 @@
 export type Suit = "Hearts" | "Diamonds" | "Clubs" | "Spades";
 export type Rank = "Z" | "A" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "T" | "J" | "Q" | "K";
-export type GamePhase = "waiting" | "playing" | "finished";
+export type GamePhase = "waiting" | "setup" | "playing" | "finished";
 export type TurnPhase = "drawing" | "action";
 export type SocketResponse = { success: true } | { error: string };
 export type PlayerResult = {
@@ -26,6 +26,7 @@ export interface Player{
     drawnCard?: Card;
     isHost: boolean;
     hasBurned: boolean;
+    ready: boolean;
 };
 
 export interface GameState{

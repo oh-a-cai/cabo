@@ -53,7 +53,7 @@ export function startGame(game: GameState) {
   game.deck = shuffleDeck(createDeck());
   game.discardPile = [];
   game.turnId = 0;
-  game.gamePhase = "playing";
+  game.gamePhase = "setup";
   game.turnPhase = "drawing";
   game.isCardMatched = false;
   game.isCaboCalled = false;
@@ -64,13 +64,32 @@ export function startGame(game: GameState) {
 
   for (const player of game.players) { // deal cards
     player.hand = game.deck.splice(0, 4);
-    player.hand.map(card => card.visibility = "owner");
+    player.hand.map(card => card.visibility = "hidden");
     player.drawnCard = undefined;
     player.hasBurned = false;
+    player.ready = false;
+
+    player.hand.slice(-2).forEach(card => card.visibility = "owner");
   }
 }
 
-export function drawCard(game: GameState, playerId: string): SocketResponse {
+export function playerReady(game: GameState, playerId: string): SocketResponse {
+  const player = game.players.find(p => p.id === playerId);
+  if (!player) {
+    return { error: "Player not found" };
+  }
+
+  player.ready = true;
+
+  if (game.players.every(p => p.ready)) {
+    game.players.forEach(p => p.hand.forEach(card => card.visibility = "hidden"));
+    game.gamePhase = "playing";
+  }
+
+  return { success: true };
+}
+
+export function drawCard(game: GameState, playerId: string, source: string): SocketResponse {
   if (game.gamePhase !== "playing") {
     return { error: "Game not in progress" };
   }
@@ -87,12 +106,23 @@ export function drawCard(game: GameState, playerId: string): SocketResponse {
   if (currentPlayer.id !== playerId) {
     return { error: "Not your turn" };
   }
-  if (game.deck.length === 0) {
-    return { error: "Deck is empty" };
+  
+  
+  if (source == "deck") {
+    if (game.deck.length === 0) {
+      return { error: "Deck is empty" };
+    }
+    player.drawnCard = game.deck.pop()!;
+    player.drawnCard.visibility = "owner";
+  }
+  else {
+    if (game.discardPile.length === 0) {
+      return { error: "Discard pile is empty" };
+    }
+    player.drawnCard = game.discardPile.pop()!;
+    player.drawnCard.visibility = "all";
   }
   
-  player.drawnCard = game.deck.pop()!;
-  player.drawnCard.visibility = "owner";
   game.turnPhase = "action";
     
   return { success: true };
@@ -161,7 +191,9 @@ export function swapCard(game: GameState, playerId: string, cardId: string): Soc
   const cardCopy = player.hand[index];
   cardCopy.visibility = "all";
       
-  player.drawnCard.visibility = "hidden";
+  if (player.drawnCard.visibility === "owner") {
+    player.drawnCard.visibility = "hidden";
+  }
   player.hand[index] = player.drawnCard;
   
   game.discardPile.push(cardCopy);

@@ -20,7 +20,7 @@ export default function Lobby() {
       setPlayers(game.players);
       setIsHost(game.players[0]?.id === socket.id); // first player is host
 
-      if (game.gamePhase === "playing") { // check if game starts
+      if (game.gamePhase === "setup") { // check if game starts
         navigate(`/game/${roomId}`);
       }
     });
@@ -32,7 +32,7 @@ export default function Lobby() {
     };
 
     const gameHandler = (game: GameState) => {
-      if (game.gamePhase === "playing") {
+      if (game.gamePhase === "setup") {
         navigate(`/game/${roomId}`);
       }
     };
