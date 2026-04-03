@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../clientSocket/socket";
 import type { GameState, Card, SocketResponse } from "../../../shared/types";
+import { resolve } from "path";
 
 export default function Game() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const [gameState, setGameState] = useState<GameState | null>(null);
+
+  const [pendingCardPower, setPendingCardPower] = useState<GameState["pendingCardPower"] | null>(null);
+  const [selectedCard, setSelectedCard] = useState<string | null>(null);
+  const [selectedTargetCard, setSelectedTargetCard] = useState<string | null>(null);
 
   useEffect(() => {
     // fetch game state on page load
@@ -22,6 +27,7 @@ export default function Game() {
     // listen for any new updates
     const handler = (game: GameState) => {
       setGameState(game);
+      setPendingCardPower(game.pendingCardPower || null);
     };
     socket.on("gameState", handler);
 
@@ -37,8 +43,10 @@ export default function Game() {
   const me = gameState.players.find(player => player.id === socket.id);
   const others = gameState.players.filter(player => player.id !== socket.id);
   const isMyTurn = gameState.players[gameState.turnId].id === me?.id;
+
   const canDraw = isMyTurn && gameState.turnPhase === "drawing";
   const canAct = isMyTurn && gameState.turnPhase === "action";
+
   const readyCount = gameState.players.filter(p => p.ready).length;
   const totalPlayers = gameState.players.length;
   const isReady = me?.ready === true;
@@ -81,6 +89,42 @@ export default function Game() {
     });
   };
 
+  const confirmPower = (parameters: { myCardId?: string; targetCardId?: string }) => {
+    socket.emit("confirmPower", roomId, parameters, (response: SocketResponse) => {
+      if ("error" in response) {
+        alert(response.error);
+      }
+    });
+  };
+  
+  const finishPower = () => {
+    socket.emit("finishPower", roomId, (response: SocketResponse) => {
+      if ("error" in response) {
+        alert(response.error);
+      }
+      
+      setSelectedCard(null);
+      setSelectedTargetCard(null);
+    });
+  };
+
+  const confirmAndFinishPower = (parameters: { myCardId?: string; targetCardId?: string }) => {
+    socket.emit("confirmPower", roomId, parameters, (response: SocketResponse) => {
+      if ("error" in response) {
+        alert(response.error);
+      }
+
+      socket.emit("finishPower", roomId, (res: SocketResponse) => {
+        if ("error" in res) {
+          alert(res.error);
+        }
+
+        setSelectedCard(null);
+        setSelectedTargetCard(null);
+      });
+    });
+  };
+
   const handleSwap = (cardId: string) => {
     socket.emit("swapCard", roomId, cardId, (response: SocketResponse) => {
       if ("error" in response) {
@@ -101,7 +145,7 @@ export default function Game() {
     if (canAct && me.drawnCard) {
       handleSwap(cardId);
     } 
-    else if (gameState.turnPhase === "drawing") {
+    else if (gameState.turnPhase === "drawing" || gameState.turnPhase === "power") {
       handleMatchCard(cardId);
     } 
     else {
@@ -120,7 +164,7 @@ export default function Game() {
   const getCardImage = (card: Card, ownerId: string) => {
     const isMe = ownerId === socket.id;
     
-    const isVisible = card.visibility === "all" || (card.visibility === "owner" && isMe);
+    const isVisible = card.visibility === "all" || (card.visibility === "owner" && isMe) || card.peekerId === socket.id;
     
     if (!isVisible) {
       return "/Deck_of_cards/back.png";
@@ -244,6 +288,127 @@ export default function Game() {
               className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
             />
             <span>Click the drawn card to discard, or click a card in your hand to swap</span>
+          </div>
+        )}
+
+        {pendingCardPower && pendingCardPower.playerId === socket.id && (
+          <div>
+            {pendingCardPower.type === "peekSelf" && (
+              <>
+                <h3 className="mb-2">Peek one of your cards</h3>
+                <div className="mb-2 flex gap-2 flex-wrap">
+                  {me?.hand.map(card => (
+                    <img
+                      src={getCardImage(card, me.id)}
+                      alt={card.id}
+                      onClick={() => setSelectedCard(card.id)}
+                      className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200 
+                        ${selectedCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
+                    />
+                  ))}
+                </div>
+                {!pendingCardPower.myCardId ? (
+                  <button
+                    disabled={!selectedCard}
+                    onClick={() => confirmPower({ myCardId: selectedCard! })}
+                    className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
+                  >
+                    Confirm
+                  </button>
+                ) : (
+                  <button
+                    onClick={finishPower}
+                    className="px-4 py-2 bg-blue-500 text-white rounded"
+                  >
+                    Finished
+                  </button>
+                )}
+              </>
+            )}
+
+            {pendingCardPower.type === "peekOther" && (
+              <>
+                <h3 className="mb-2">Peek another player's card</h3>
+                {others.map(player => (
+                  <div key={player.id} className="mb-2">
+                    <h4>{player.id}</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      {player.hand.map(card => (
+                        <img
+                          src={getCardImage(card, player.id)}
+                          alt={card.id}
+                          onClick={() => {setSelectedTargetCard(card.id)}}
+                          className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200
+                            ${selectedTargetCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {!pendingCardPower.targetCardId ? (
+                  <button
+                    disabled={!selectedTargetCard}
+                    onClick={() => confirmPower({ targetCardId: selectedTargetCard! })}
+                    className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
+                  >
+                    Confirm
+                  </button>
+                ) : (
+                  <button 
+                    onClick={finishPower}
+                    className="px-4 py-2 bg-blue-500 text-white rounded"
+                  >
+                    Finished
+                  </button>
+                )}
+              </>
+            )}
+
+            {pendingCardPower.type === "swap" && (
+              <>
+                <h3 className="mb-2">Swap a card with another player</h3>
+                <div className="mb-2">
+                  <h4>Your Hand</h4>
+                  <div className="flex gap-2 flex-wrap">
+                    {me?.hand.map(card => (
+                      <img
+                        src={getCardImage(card, me.id)}
+                        alt={card.id}
+                        onClick={() => setSelectedCard(card.id)}
+                        className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200
+                          ${selectedCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <h4>Other Players</h4>
+                  {others.map(player => (
+                    <div key={player.id} className="mb-2">
+                      <h5>{player.id}</h5>
+                      <div className="flex gap-2 flex-wrap">
+                        {player.hand.map(card => (
+                          <img
+                            src={getCardImage(card, player.id)}
+                            alt={card.id}
+                            onClick={() => {setSelectedTargetCard(card.id)}}
+                            className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200
+                              ${selectedTargetCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  disabled={!selectedCard || !selectedTargetCard}
+                  onClick={() => confirmAndFinishPower({ myCardId: selectedCard!, targetCardId: selectedTargetCard! })}
+                  className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
+                >
+                  Confirm Swap
+                </button>
+              </>
+            )}
           </div>
         )}
 

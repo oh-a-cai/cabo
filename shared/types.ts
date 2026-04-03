@@ -1,7 +1,7 @@
 export type Suit = "Hearts" | "Diamonds" | "Clubs" | "Spades";
 export type Rank = "Z" | "A" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "T" | "J" | "Q" | "K";
 export type GamePhase = "waiting" | "setup" | "playing" | "finished";
-export type TurnPhase = "drawing" | "action";
+export type TurnPhase = "drawing" | "action" | "power";
 export type SocketResponse = { success: true } | { error: string };
 export type PlayerResult = {
     playerId: string; 
@@ -11,12 +11,21 @@ export type PlayerResult = {
 };
 export type Visibility = "hidden" | "owner" | "all";
 
+export interface PendingCardPower {
+    playerId: string;
+    type: "peekSelf" | "peekOther" | "swap";
+    myCardId?: string;
+    targetCardId?: string;
+}
+
 export interface Card{
     id: string;
     suit: Suit;
     rank: Rank;
     value: number;
     visibility: Visibility;
+    peekerId?: string
+    source: "deck" | "discard";
 };
 
 export interface Player{
@@ -37,6 +46,7 @@ export interface GameState{
     turnId: number;
     gamePhase: GamePhase;
     turnPhase: TurnPhase;
+    pendingCardPower?: PendingCardPower
     isCardMatched: boolean;
     isCaboCalled: boolean;
     caboCaller?: Player;

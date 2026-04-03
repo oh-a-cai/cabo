@@ -1,6 +1,6 @@
 import logger from 'jet-logger';
 import { Server, Socket } from "socket.io";
-import { startGame, playerReady, drawCard, discardCard, swapCard, matchCard, callCabo } from "./gameEngine";
+import { startGame, playerReady, drawCard, discardCard, confirmPowerSelection, finishPower, swapCard, matchCard, callCabo } from "./gameEngine";
 import type { GameState, Player, SocketResponse } from "./../../shared/types";
 
 export function initializeSockets(io: Server, games: Map<string, GameState>) {
@@ -22,6 +22,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         turnId: 0,
         gamePhase: "waiting",
         turnPhase: "drawing",
+        pendingCardPower: undefined,
         isCardMatched: false,
         isCaboCalled: false,
         caboCaller: undefined,
@@ -140,6 +141,36 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
       
+      io.to(roomId).emit("gameState", game);
+      callback?.({ success: true });
+    });
+
+    socket.on("confirmPower", (roomId: string, parameters: any, callback: (res: SocketResponse) => void) => {
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: "Room not found" });
+      }
+    
+      const response = confirmPowerSelection(game, socket.id, parameters);
+      if ("error" in response) {
+        return callback?.(response);
+      }
+
+      io.to(roomId).emit("gameState", game);
+      callback?.({ success: true });
+    });
+
+    socket.on("finishPower", (roomId: string, callback: (res: SocketResponse) => void) => {
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: "Room not found" });
+      }
+      
+      const response = finishPower(game, socket.id);
+      if ("error" in response) {
+        return callback?.(response);
+      }
+
       io.to(roomId).emit("gameState", game);
       callback?.({ success: true });
     });

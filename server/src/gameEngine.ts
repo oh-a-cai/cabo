@@ -15,7 +15,8 @@ export function createDeck(): Card[] {
         suit,
         rank,
         value: RANK_VALUES[i],
-        visibility: "hidden"
+        visibility: "hidden",
+        source: "deck"
       });
       i++;
     }
@@ -27,14 +28,16 @@ export function createDeck(): Card[] {
     suit: 'Hearts',
     rank: 'Z',
     value: 0,
-    visibility: "hidden"
+    visibility: "hidden",
+    source: "deck"
   });
   deck.push({
     id: 'ZS',
     suit: 'Spades',
     rank: 'Z',
     value: 0,
-    visibility: "hidden"
+    visibility: "hidden",
+    source: "deck"
   });
 
   return deck;
@@ -108,19 +111,21 @@ export function drawCard(game: GameState, playerId: string, source: string): Soc
   }
   
   
-  if (source == "deck") {
+  if (source === "deck") {
     if (game.deck.length === 0) {
       return { error: "Deck is empty" };
     }
     player.drawnCard = game.deck.pop()!;
     player.drawnCard.visibility = "owner";
+    player.drawnCard.source = source;
   }
-  else {
+  else if (source === "discard") {
     if (game.discardPile.length === 0) {
       return { error: "Discard pile is empty" };
     }
     player.drawnCard = game.discardPile.pop()!;
     player.drawnCard.visibility = "all";
+    player.drawnCard.source = source;
   }
   
   game.turnPhase = "action";
@@ -149,9 +154,147 @@ export function discardCard(game: GameState, playerId: string): SocketResponse {
     return { error: "No card to discard" };
   }
   
-  player.drawnCard.visibility = "all";
-  game.discardPile.push(player.drawnCard);
+  const discardedCard = player.drawnCard;
+  discardedCard.visibility = "all";
+  game.discardPile.push(discardedCard);
   player.drawnCard = undefined;
+
+  if (discardedCard.source === "deck") {
+    if (discardedCard.value === 7 || discardedCard.value === 8) {
+      // player chooses one card in their hand and reveals it to themselves, then once finished peeking the card becomes hidden again
+      game.pendingCardPower = {
+        type: "peekSelf",
+        playerId: playerId,
+        myCardId: undefined,
+      };
+
+      game.turnPhase = "power";
+      return { success: true };
+    }
+    else if (discardedCard.value === 9 || discardedCard.value === 10) {
+      // player first chooses a different player, then chooses one card in their hand and reveals it to themselves, then once finished peeking the card becomes hidden again
+      game.pendingCardPower = {
+        type: "peekOther",
+        playerId: playerId,
+        targetCardId: undefined,
+      };
+
+      game.turnPhase = "power";
+      return { success: true };
+    }
+    else if (discardedCard.value === 11 || discardedCard.value === 12) {
+      // player first chooses a different player, then chooses one card in their hand, and one card in the other player's hand, then swaps the positions of those two cards without revealing the cards
+      game.pendingCardPower = {
+        type: "swap",
+        playerId: playerId,
+        myCardId: undefined,
+        targetCardId: undefined,
+      };
+
+      game.turnPhase = "power";
+      return { success: true };
+    }
+  }
+  
+  nextTurn(game);
+  game.turnPhase = "drawing";
+
+  if (game.deck.length === 0) {
+    endGame(game);
+    return { success: true };
+  }
+    
+  return { success: true };
+}
+
+export function confirmPowerSelection(game: GameState, playerId: string, parameters: { myCardId?: string; targetCardId?: string }): SocketResponse {
+  if (game.gamePhase !== "playing") {
+    return { error: "Game not in progress" };
+  }
+  if (game.turnPhase !== "power") {
+    return { error: "Must be in power phase" };
+  }
+  if (!game.pendingCardPower || game.pendingCardPower.playerId !== playerId) {
+    return { error: "No pending effect for this player" };
+  }
+
+  const power = game.pendingCardPower;
+
+  if (power.type === "peekSelf") {
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) {
+      return { error: "Player not found" };
+    }
+    const myCard = player.hand.find(c => c.id === parameters.myCardId);
+    if (!myCard) {
+      return { error: "Card not found" }
+    }
+
+    power.myCardId = myCard.id;
+    myCard.peekerId = playerId;
+  }
+  else if (power.type === "peekOther") {
+    const targetCard = game.players.flatMap(p => p.hand).find(c => c.id === parameters.targetCardId);
+    if (!targetCard) {
+      return { error: "Target card not found" };
+    }
+    
+    power.targetCardId = targetCard.id;
+    targetCard.peekerId = playerId;
+  }
+  else {
+    const player = game.players.find(p => p.id === playerId);
+    if (!player ) {
+      return { error: "Player not found" };
+    }
+    const myCard = player.hand.find(c => c.id === parameters.myCardId);
+    const targetCard = game.players.flatMap(p => p.hand).find(c => c.id === parameters.targetCardId);
+    if (!myCard || !targetCard) {
+      return { error: "Cards not found" };
+    }
+
+    power.myCardId = myCard.id;
+    power.targetCardId = targetCard.id
+  }
+    
+  return { success: true };
+}
+
+export function finishPower(game: GameState, playerId: string): SocketResponse {
+  if (game.gamePhase !== "playing") {
+    return { error: "Game not in progress" };
+  }
+  if (game.turnPhase !== "power") {
+    return { error: "Must be in power phase" };
+  }
+  if (!game.pendingCardPower || game.pendingCardPower.playerId !== playerId) {
+    return { error: "No pending effect for this player" };
+  }
+
+  const power = game.pendingCardPower;
+
+  if (power.type === "peekSelf") {
+    game.players.flatMap(p => p.hand).find(c => c.id === power.myCardId)!.peekerId = undefined;
+  }
+  else if (power.type === "peekOther") {
+    game.players.flatMap(p => p.hand).find(c => c.id === power.targetCardId)!.peekerId = undefined;
+  }
+  else {
+    const player = game.players.find(p => p.hand.some(c => c.id === power.myCardId));
+    const targetPlayer = game.players.find(p => p.hand.some(c => c.id === power.targetCardId));
+    if (!player || !targetPlayer) {
+      return { error: "Players not found" };
+    }
+    const myCardIndex = player.hand.findIndex(c => c.id === power.myCardId);
+    const targetCardIndex = targetPlayer.hand.findIndex(c => c.id === power.targetCardId);
+    if (myCardIndex === -1 || targetCardIndex === -1) {
+      return { error: "Cards not found" };
+    }
+
+    [player.hand[myCardIndex], targetPlayer.hand[targetCardIndex]] = [targetPlayer.hand[targetCardIndex], player.hand[myCardIndex]];
+  }
+    
+  game.pendingCardPower = undefined;
   nextTurn(game);
   game.turnPhase = "drawing";
 
@@ -212,8 +355,8 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
   if (game.gamePhase !== "playing") {
     return { error: "Game not in progress" };
   }
-  if (game.turnPhase !== "drawing") {
-    return { error: "Must be in drawing phase" };
+  if (game.turnPhase !== "drawing" && game.turnPhase !== "power") {
+    return { error: "Must be in drawing or power phase" };
   }
     
   const player = game.players.find(p => p.id === playerId);
