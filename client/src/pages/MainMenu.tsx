@@ -22,6 +22,7 @@ export default function MainMenu() {
     socket.emit("joinRoom", room, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
       else {
         navigate(`/room/${room}`);

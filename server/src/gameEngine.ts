@@ -110,7 +110,8 @@ export function drawCard(game: GameState, playerId: string, source: string): Soc
     return { error: "Not your turn" };
   }
   
-  
+  game.isCardMatched = false;
+
   if (source === "deck") {
     if (game.deck.length === 0) {
       return { error: "Deck is empty" };
@@ -358,44 +359,86 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
   if (game.turnPhase !== "drawing" && game.turnPhase !== "power") {
     return { error: "Must be in drawing or power phase" };
   }
-    
-  const player = game.players.find(p => p.id === playerId);
-  if (!player) {
-    return { error: "Player not found" };
+  if (game.matchReceiverId) {
+    return { error: "Finish giving card first" };
   }
   if (game.isCardMatched) {
     return { error: "Card already matched by another player" };
   }
 
-  const index = player.hand.findIndex(c => c.id === cardId);
-  if (index === -1) {
-    return { error: "Card not in hand" };
-  }
-  const cardToMatch = player.hand[index];
-  const topDiscardCard = game.discardPile[game.discardPile.length - 1];
-  if (!topDiscardCard) {
-    return { error: "Discard pile is empty" }
+  const player = game.players.find(p => p.id === playerId);
+  if (!player) {
+    return { error: "Player not found" };
   }
 
-  if (cardToMatch.rank === topDiscardCard.rank) {
-    game.isCardMatched = true;
-    const [discardedCard] = player.hand.splice(index, 1);
-    discardedCard.visibility = "all";
-    game.discardPile.push(discardedCard);
+  const targetPlayer = game.players.find(p => p.hand.some(c => c.id === cardId));
+  if (!targetPlayer) {
+    return { error: "Target player not found" };
   }
-  else {
+
+  const index = targetPlayer.hand.findIndex(c => c.id === cardId);
+  const cardToMatch = targetPlayer.hand[index];
+
+  const topDiscardCard = game.discardPile[game.discardPile.length - 1];
+  if (!topDiscardCard) {
+    return { error: "Discard pile is empty" };
+  }
+
+  const isMatch = cardToMatch.rank === topDiscardCard.rank;
+  const isSelfMatch = targetPlayer.id === playerId;
+
+  if (!isMatch) {
     if (game.deck.length > 0 && !player.hasBurned) {
       const drawnCard = game.deck.pop()!;
       drawnCard.visibility = "hidden";
       player.hand.push(drawnCard);
       player.hasBurned = true;
     }
+    return { success: true };
   }
 
-  if (player.hand.length === 0) {
+  game.isCardMatched = true;
+
+  const [discardedCard] = targetPlayer.hand.splice(index, 1);
+  discardedCard.visibility = "all";
+  game.discardPile.push(discardedCard);
+
+  if (isSelfMatch) {
+    if (player.hand.length === 0) {
+      endGame(game);
+    }
+  }
+  else {
+    game.matchReceiverId = targetPlayer.id;
+  }
+
+  return { success: true };
+}
+
+export function giveCardToPlayer(game: GameState, playerId: string, myCardId: string): SocketResponse {
+  if (!game.matchReceiverId) {
+    return { error: "No active match to give a card" };
+  }
+
+  const player = game.players.find(p => p.id === playerId);
+  const targetPlayer = game.players.find(p => p.id === game.matchReceiverId);
+  if (!player || !targetPlayer) {
+    return { error: "Players not found" };
+  }
+
+  const cardIndex = player.hand.findIndex(c => c.id === myCardId);
+  if (cardIndex === -1) {
+    return { error: "Card not found in your hand" };
+  }
+
+  const [givenCard] = player.hand.splice(cardIndex, 1);
+  targetPlayer.hand.push(givenCard);
+  game.matchReceiverId = undefined;
+
+  if (player.hand.length === 0 || targetPlayer.hand.length === 0) {
     endGame(game);
   }
-        
+
   return { success: true };
 }
 

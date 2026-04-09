@@ -49,6 +49,7 @@ export default function Lobby() {
     socket.emit("leaveRoom", roomId, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
       else {
         navigate("/");

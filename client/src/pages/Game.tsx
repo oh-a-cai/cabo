@@ -13,6 +13,10 @@ export default function Game() {
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [selectedTargetCard, setSelectedTargetCard] = useState<string | null>(null);
 
+  const [isMatching, setIsMatching] = useState(false);
+  const [matchReceiverId, setMatchReceiverId] = useState<string | null>(null);
+  const [matchGiveCard, setMatchGiveCard] = useState<string | null>(null);
+
   useEffect(() => {
     // fetch game state on page load
     socket.emit("getGameState", roomId, (game: GameState | { error: string }) => {
@@ -28,6 +32,14 @@ export default function Game() {
     const handler = (game: GameState) => {
       setGameState(game);
       setPendingCardPower(game.pendingCardPower || null);
+      if (game.matchReceiverId && game.matchReceiverId !== socket.id) {
+        setIsMatching(true);
+        setMatchReceiverId(game.matchReceiverId);
+      } else {
+        setIsMatching(false);
+        setMatchReceiverId(null);
+        setMatchGiveCard(null);
+      }
     };
     socket.on("gameState", handler);
 
@@ -55,6 +67,7 @@ export default function Game() {
     socket.emit("playerReady", roomId, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
     });
   };
@@ -66,6 +79,7 @@ export default function Game() {
     socket.emit("drawCard", roomId, "deck", (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
     });
   };
@@ -77,6 +91,7 @@ export default function Game() {
     socket.emit("drawCard", roomId, "discard", (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
     });
   };
@@ -85,6 +100,7 @@ export default function Game() {
     socket.emit("discardCard", roomId, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
     });
   };
@@ -93,6 +109,7 @@ export default function Game() {
     socket.emit("confirmPower", roomId, parameters, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
     });
   };
@@ -101,6 +118,7 @@ export default function Game() {
     socket.emit("finishPower", roomId, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
       
       setSelectedCard(null);
@@ -112,11 +130,13 @@ export default function Game() {
     socket.emit("confirmPower", roomId, parameters, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
 
       socket.emit("finishPower", roomId, (res: SocketResponse) => {
         if ("error" in res) {
           alert(res.error);
+          return;
         }
 
         setSelectedCard(null);
@@ -129,6 +149,7 @@ export default function Game() {
     socket.emit("swapCard", roomId, cardId, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
     });
   };
@@ -137,19 +158,45 @@ export default function Game() {
     socket.emit("matchCard", roomId, cardId, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
+      }
+      const receiverId = gameState?.matchReceiverId;
+      if (receiverId && receiverId !== socket.id) {
+        setIsMatching(true);
+        setMatchReceiverId(receiverId);
       }
     });
   };
 
+  const giveCardToPlayer = (myCardId: string) => {
+    socket.emit("giveCardToPlayer", roomId, { myCardId }, (res: SocketResponse) => {
+      if ("error" in res) {
+        alert(res.error);
+      }
+      setIsMatching(false);
+      setMatchReceiverId(null);
+      setMatchGiveCard(null);
+    });
+  };
+
   const handleCardClick = (cardId: string) => {
-    if (canAct && me.drawnCard) {
+    if (!gameState || !me) return;
+
+    // If player is in the middle of giving a card, block other actions
+    if (isMatching) {
+      alert("You must give a card to complete the previous match first.");
+      return;
+    }
+
+    const canSwap = canAct && me.drawnCard;
+    const canMatch = gameState.turnPhase === "drawing" || gameState.turnPhase === "power";
+
+    if (canSwap) {
       handleSwap(cardId);
-    } 
-    else if (gameState.turnPhase === "drawing" || gameState.turnPhase === "power") {
+    } else if (canMatch) {
       handleMatchCard(cardId);
-    } 
-    else {
-      alert("You cannot act on this card right now");
+    } else {
+      alert("You cannot act on this card right now.");
     }
   };
 
@@ -157,6 +204,7 @@ export default function Game() {
     socket.emit("callCabo", roomId, (response: SocketResponse) => {
       if ("error" in response) {
         alert(response.error);
+        return;
       }
     });
   };
@@ -422,6 +470,7 @@ export default function Game() {
                   <img
                     src={getCardImage(card, player.id)}
                     alt={card.id}
+                    onClick={() => handleCardClick(card.id)}
                     className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
                   />
                 ))}
@@ -429,6 +478,29 @@ export default function Game() {
             </div>
           ))}
         </div>
+
+        {isMatching && matchReceiverId && (
+          <div className="mt-4 p-4 border rounded bg-gray-100">
+            <h3>Select a card from your hand to give to {matchReceiverId}</h3>
+            <div className="flex gap-2 flex-wrap">
+              {me?.hand.map(card => (
+                <img
+                  src={getCardImage(card, me.id)}
+                  alt={card.id}
+                  onClick={() => setMatchGiveCard(card.id)}
+                  className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200 ${matchGiveCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
+                />
+              ))}
+            </div>
+            <button
+              disabled={!matchGiveCard}
+              onClick={() => giveCardToPlayer(matchGiveCard!)}
+              className="mt-2 px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
+            >
+              Confirm
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

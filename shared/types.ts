@@ -46,7 +46,8 @@ export interface GameState{
     turnId: number;
     gamePhase: GamePhase;
     turnPhase: TurnPhase;
-    pendingCardPower?: PendingCardPower
+    pendingCardPower?: PendingCardPower;
+    matchReceiverId?: string;
     isCardMatched: boolean;
     isCaboCalled: boolean;
     caboCaller?: Player;
