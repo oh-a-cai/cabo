@@ -71,13 +71,12 @@ cabo/
 - [Node.js](https://nodejs.org/) (v18+ recommended)
 - npm
 
-### Setup
+### Development
 
 **1. Clone the repository**
 ```bash
 git clone https://github.com/oh-a-cai/cabo.git
 ```
-> Clones the repo into your current directory.
 
 **2. Navigate to the project root**
 ```bash
@@ -115,6 +114,30 @@ cd client
 npm start
 ```
 > Runs only the React frontend.
+
+---
+
+### Production Build & Start
+
+The production build compiles the React frontend and TypeScript backend together. The Express server serves the React app as static files, so only one process needs to run.
+
+**1. Build**
+```bash
+cd server
+npm run build
+```
+> Compiles the React client and TypeScript server into the `dist/` directory.
+
+**2. Start**
+```bash
+npm run start
+```
+> Starts the Express server in production mode. Both the API and frontend are served from the same port.
+
+Or as a single command:
+```bash
+npm run build && npm run start
+```
 
 ---
 

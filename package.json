@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "concurrently -n SERVER,CLIENT -c blue,green \"cd server && npm run dev:hot\" \"cd client && npm start\""
   },
+  "_moduleAliases": {
+    "@src": "server/dist/server/src"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

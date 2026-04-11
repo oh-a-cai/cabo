@@ -7,9 +7,12 @@
     "dev": "NODE_ENV=development ts-node ./src/index.ts",
     "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src --ext .ts",
     "lint": "eslint .",
-    "start": "NODE_ENV=production node -r ./config.js ./dist",
+    "start": "NODE_ENV=production PORT=3000 node ./dist/server/src/index.js",
     "test": "NODE_ENV=test vitest",
     "type-check": "tsc --noEmit"
+  },
+  "_moduleAliases": {
+      "@src": "dist/server/src"
   },
   "engines": {
     "node": ">=16.0.0"

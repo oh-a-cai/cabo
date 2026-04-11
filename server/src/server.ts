@@ -19,7 +19,7 @@ import { NodeEnvs } from '@src/common/constants';
 ******************************************************************************/
 
 const app = express();
-app.use(cors({ origin: "http://localhost:3000" }));
+app.use(cors());
 
 // **** Middleware **** //
 
@@ -57,23 +57,13 @@ app.use((err: Error, _: Request, res: Response, next: NextFunction) => {
 
 // **** FrontEnd Content **** //
 
-// Set views directory (html)
-const viewsDir = path.join(__dirname, 'views');
-app.set('views', viewsDir);
-
-// Set static directory (js and css).
-const staticDir = path.join(__dirname, 'public');
-app.use(express.static(staticDir));
-
-// Nav to users pg by default
-app.get('/', (req: Request, res: Response) => {
-  return res.redirect('/users');
-});
-
-// Redirect to login if not logged in.
-app.get('/users', (req: Request, res: Response) => {
-  return res.sendFile('users.html', { root: viewsDir });
-});
+if (ENV.NodeEnv === NodeEnvs.Production) {
+  const clientBuildDir = path.join(__dirname, '../../../../client/build');
+  app.use(express.static(clientBuildDir));
+  app.get('*', (req: Request, res: Response) => {
+    res.sendFile(path.join(clientBuildDir, 'index.html'));
+  });
+}
 
 
 /******************************************************************************

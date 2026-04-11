@@ -1,3 +1,4 @@
+import 'module-alias/register';
 import logger from 'jet-logger';
 import http from 'http';
 import ENV from '@src/common/constants/ENV';
@@ -23,7 +24,7 @@ const SERVER_START_MSG = (
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: true,
     methods: ["GET", "POST"],
   }
 });
