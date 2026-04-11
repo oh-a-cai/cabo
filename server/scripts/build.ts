@@ -3,7 +3,7 @@ import logger from 'jet-logger';
 
 (async () => {
   try {
-    await exec('npm run build', '../client');
+    await exec('npm install && npm run build', '../client');
     await exec('tsc --build tsconfig.prod.json', './');
   } catch (err) {
     logger.err(err);
