@@ -19,7 +19,6 @@
     "swc": true,
     "require": [
       "tsconfig-paths/register",
-      "./config.ts"
     ],
   },
   "include": [
