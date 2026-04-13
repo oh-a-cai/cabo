@@ -110,8 +110,18 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       if ("error" in response) {
         return callback?.(response);
       }
-    
+
       io.to(roomId).emit("gameState", game);
+    
+      if (game.countdownStartedAt) {
+        setTimeout(() => {
+          game.players.forEach(p => p.hand.forEach(card => card.visibility = "hidden"));
+          game.gamePhase = "playing";
+          game.countdownStartedAt = undefined;
+          io.to(roomId).emit("gameState", game);
+        }, 5000);
+      }
+
       callback?.({ success: true });
     });
 

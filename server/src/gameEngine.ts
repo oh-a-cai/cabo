@@ -58,6 +58,9 @@ export function startGame(game: GameState) {
   game.turnId = 0;
   game.gamePhase = "setup";
   game.turnPhase = "drawing";
+  game.countdownStartedAt = undefined;
+  game.pendingCardPower = undefined;
+  game.matchReceiverId = undefined;
   game.isCardMatched = false;
   game.isCaboCalled = false;
   game.caboCaller = undefined;
@@ -85,8 +88,7 @@ export function playerReady(game: GameState, playerId: string): SocketResponse {
   player.ready = true;
 
   if (game.players.every(p => p.ready)) {
-    game.players.forEach(p => p.hand.forEach(card => card.visibility = "hidden"));
-    game.gamePhase = "playing";
+    game.countdownStartedAt = Date.now();
   }
 
   return { success: true };

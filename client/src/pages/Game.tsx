@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../clientSocket/socket";
 import type { GameState, Card, SocketResponse } from "../../../shared/types";
-import { resolve } from "path";
 
 export default function Game() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const [pendingCardPower, setPendingCardPower] = useState<GameState["pendingCardPower"] | null>(null);
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
@@ -32,10 +32,14 @@ export default function Game() {
     const handler = (game: GameState) => {
       setGameState(game);
       setPendingCardPower(game.pendingCardPower || null);
+      if (!game.countdownStartedAt) {
+        setCountdown(null);
+      }
       if (game.matchReceiverId && game.matchReceiverId !== socket.id) {
         setIsMatching(true);
         setMatchReceiverId(game.matchReceiverId);
-      } else {
+      } 
+      else {
         setIsMatching(false);
         setMatchReceiverId(null);
         setMatchGiveCard(null);
@@ -48,6 +52,18 @@ export default function Game() {
     };
   }, [roomId, navigate]);
 
+  useEffect(() => {
+    if (!gameState?.countdownStartedAt) return;
+  
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - gameState.countdownStartedAt!) / 1000);
+      const remaining = Math.max(5 - elapsed, 0);
+      setCountdown(remaining);
+    }, 500);
+  
+    return () => clearInterval(interval);
+  }, [gameState?.countdownStartedAt]);
+
   if (!gameState) {
     return <p>Loading game...</p>;
   }
@@ -59,9 +75,10 @@ export default function Game() {
   const canDraw = isMyTurn && gameState.turnPhase === "drawing";
   const canAct = isMyTurn && gameState.turnPhase === "action";
 
-  const readyCount = gameState.players.filter(p => p.ready).length;
-  const totalPlayers = gameState.players.length;
+  
   const isReady = me?.ready === true;
+  const readyCount = gameState?.players.filter(p => p.ready).length;
+  const totalPlayers = gameState?.players.length;
 
   const handleReady = () => {
     socket.emit("playerReady", roomId, (response: SocketResponse) => {
@@ -215,16 +232,16 @@ export default function Game() {
     const isVisible = card.visibility === "all" || (card.visibility === "owner" && isMe) || card.peekerId === socket.id;
     
     if (!isVisible) {
-      return "/Deck_of_cards/back.png";
+      return "/assets/Deck_of_cards/back.png";
     }
   
-    return `/Deck_of_cards/${card.id}.png`;
+    return `/assets/Deck_of_cards/${card.id}.png`;
   };
   
   if (gameState.gamePhase === "setup") {
     return (
       <div>
-        <h1>Peek Phase</h1>
+        <h1>Pregame Phase</h1>
         <p>You can see your bottom 2 cards. Memorize them!</p>
         <p>Players Ready: {readyCount} / {totalPlayers}</p>
         <div>
@@ -235,8 +252,14 @@ export default function Game() {
             />
           ))}
         </div>
-  
-        <button onClick={handleReady} disabled={isReady}>{isReady ? "Ready" : "Ready up"}</button>
+        {countdown !== null ? (
+          <div>
+            <h2>All players Ready!</h2>
+            <h3>Game starting in {countdown}...</h3>
+          </div>
+        ) : (
+          <button onClick={handleReady} disabled={isReady}>{isReady ? "Ready" : "Ready up"}</button>
+        )}
       </div>
     );
   }
