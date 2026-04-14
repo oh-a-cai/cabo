@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../clientSocket/socket";
-import type { GameState, Card, SocketResponse } from "../../../shared/types";
+import type { GameState, Card, Player, SocketResponse } from "../../../shared/types";
 
 export default function Game() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -243,6 +243,48 @@ export default function Game() {
     const isVisible = card.visibility === "all" || (card.visibility === "owner" && isMe) || card.peekerId === socket.id;
     return isVisible ? card.id : "back of card";
   };
+
+  const renderHand = (player: Player | undefined, clickHandler?: (cardId: string) => void, selectedCardId?: string | null) => {
+    if (!player) {
+      return null;
+    }
+
+    const positions = player.handPositions ?? [];
+    const cols = 4;
+    const rows = 2;
+  
+    return (
+      <div className="flex gap-2">
+        {Array.from({ length: cols }).map((_, col) => (
+          <div key={col} className="flex flex-col gap-2">
+            {Array.from({ length: rows }).map((_, row) => {
+              const index = col * 2 + row; 
+              const cardId = positions[index];
+              if (!cardId) {
+                return <div key={row} className="w-20 h-28" />;
+              }
+              const card = player.hand.find(c => c.id === cardId)!;
+              if (!card) {
+                return <div key={row} className="w-20 h-28" />;
+              }
+
+              return (
+                <img
+                  key={card.id}
+                  src={getCardImage(card, player.id)}
+                  alt={getCardAlt(card, player.id)}
+                  onClick={() => clickHandler?.(card.id)}
+                  className={`w-20 h-28 rounded-lg shadow-md transition-transform duration-200
+                    ${clickHandler ? "cursor-pointer" : ""}
+                    ${selectedCardId === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  };
   
   if (gameState.gamePhase === "setup") {
     return (
@@ -250,14 +292,7 @@ export default function Game() {
         <h1>Pregame Phase</h1>
         <p>You can see your bottom 2 cards. Memorize them!</p>
         <p>Players Ready: {readyCount} / {totalPlayers}</p>
-        <div>
-          {me?.hand.map(card => (
-            <img
-              src={getCardImage(card, me.id)}
-              className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
-            />
-          ))}
-        </div>
+        {renderHand(me)}
         {countdown !== null ? (
           <div>
             <h2>All players Ready!</h2>
@@ -276,24 +311,11 @@ export default function Game() {
         <h1>{gameState.winner === socket.id ? "You won!" : `${gameState.winner} won!`}</h1>
         <h2>Results</h2>
         {gameState.results.map((result, index) => (
-          <div>
-            <p>#{index+1} — {result.playerId} {result.playerId === socket.id ? " (You)" : ""}</p>
-
+          <div key={result.player.id}>
+            <p>#{index + 1} — {result.player.id} {result.player.id === socket.id ? " (You)" : ""}</p>
             <p>Score: {result.score}</p>
-            <p>Hand:</p>
-            <div>
-              {result.playerHand.map(card => (
-                <img
-                  src={getCardImage(card, result.playerId)}
-                  alt={getCardAlt(card, result.playerId)}
-                  className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
-                />
-              ))}
-            </div>
-
-            {result.caboPenalty && (
-                <p>Cabo penalty applied (+10)</p>
-            )}
+            {renderHand(result.player)}
+            {result.caboPenalty && <p>Cabo penalty applied (+10)</p>}
           </div>
         ))}
   
@@ -344,17 +366,7 @@ export default function Game() {
 
       <div>
         <h2>Your Hand</h2>
-        <div>
-          {me?.hand.map(card => (
-            <img
-              src={getCardImage(card, me!.id)}
-              alt={getCardAlt(card, me!.id)}
-              onClick={() => handleCardClick(card.id)}
-              className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
-            />
-          ))}
-        </div>
-
+        {renderHand(me, handleCardClick)}
         {me?.drawnCard && (
           <div>
             <h3>Drawn Card:</h3>
@@ -373,17 +385,7 @@ export default function Game() {
             {pendingCardPower.type === "peekSelf" && (
               <>
                 <h3 className="mb-2">Peek one of your cards</h3>
-                <div className="mb-2 flex gap-2 flex-wrap">
-                  {me?.hand.map(card => (
-                    <img
-                      src={getCardImage(card, me.id)}
-                      alt={getCardAlt(card, me.id)}
-                      onClick={() => setSelectedCard(card.id)}
-                      className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200 
-                        ${selectedCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
-                    />
-                  ))}
-                </div>
+                {renderHand(me, (cardId) => setSelectedCard(cardId), selectedCard)}
                 {!pendingCardPower.myCardId ? (
                   <button
                     disabled={!selectedCard}
@@ -409,17 +411,7 @@ export default function Game() {
                 {others.map(player => (
                   <div key={player.id} className="mb-2">
                     <h4>{player.id}</h4>
-                    <div className="flex gap-2 flex-wrap">
-                      {player.hand.map(card => (
-                        <img
-                          src={getCardImage(card, player.id)}
-                          alt={getCardAlt(card, player.id)}
-                          onClick={() => {setSelectedTargetCard(card.id)}}
-                          className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200
-                            ${selectedTargetCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
-                        />
-                      ))}
-                    </div>
+                    {renderHand(player, (cardId) => setSelectedTargetCard(cardId), selectedTargetCard)}
                   </div>
                 ))}
                 {!pendingCardPower.targetCardId ? (
@@ -446,34 +438,14 @@ export default function Game() {
                 <h3 className="mb-2">Swap a card with another player</h3>
                 <div className="mb-2">
                   <h4>Your Hand</h4>
-                  <div className="flex gap-2 flex-wrap">
-                    {me?.hand.map(card => (
-                      <img
-                        src={getCardImage(card, me.id)}
-                        alt={getCardAlt(card, me.id)}
-                        onClick={() => setSelectedCard(card.id)}
-                        className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200
-                          ${selectedCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
-                      />
-                    ))}
-                  </div>
+                  {renderHand(me, (cardId) => setSelectedCard(cardId), selectedCard)}
                 </div>
                 <div className="mb-2">
                   <h4>Other Players</h4>
                   {others.map(player => (
                     <div key={player.id} className="mb-2">
                       <h5>{player.id}</h5>
-                      <div className="flex gap-2 flex-wrap">
-                        {player.hand.map(card => (
-                          <img
-                            src={getCardImage(card, player.id)}
-                            alt={getCardAlt(card, player.id)}
-                            onClick={() => {setSelectedTargetCard(card.id)}}
-                            className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200
-                              ${selectedTargetCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
-                          />
-                        ))}
-                      </div>
+                      {renderHand(player, (cardId) => setSelectedTargetCard(cardId), selectedTargetCard)}
                     </div>
                   ))}
                 </div>
@@ -494,16 +466,7 @@ export default function Game() {
           {others.map(player => (
             <div>
               <p>{player.id}'s Hand</p>
-              <div>
-                {player.hand.map(card => (
-                  <img
-                    src={getCardImage(card, player.id)}
-                    alt={getCardAlt(card, player.id)}
-                    onClick={() => handleCardClick(card.id)}
-                    className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
-                  />
-                ))}
-              </div>
+              {renderHand(player, handleCardClick)}
             </div>
           ))}
         </div>
@@ -511,16 +474,7 @@ export default function Game() {
         {isMatching && matchReceiverId && (
           <div className="mt-4 p-4 border rounded bg-gray-100">
             <h3>Select a card from your hand to give to {matchReceiverId}</h3>
-            <div className="flex gap-2 flex-wrap">
-              {me?.hand.map(card => (
-                <img
-                  src={getCardImage(card, me.id)}
-                  alt={getCardAlt(card, me.id)}
-                  onClick={() => setMatchGiveCard(card.id)}
-                  className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200 ${matchGiveCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
-                />
-              ))}
-            </div>
+            {renderHand(me, (cardId) => setMatchGiveCard(cardId), matchGiveCard)}
             <button
               disabled={!matchGiveCard}
               onClick={() => giveCardToPlayer(matchGiveCard!)}

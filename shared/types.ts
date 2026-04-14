@@ -4,9 +4,8 @@ export type GamePhase = "waiting" | "setup" | "playing" | "finished";
 export type TurnPhase = "drawing" | "action" | "power";
 export type SocketResponse = { success: true } | { error: string };
 export type PlayerResult = {
-    playerId: string; 
+    player: Player
     score: number;
-    playerHand: Card[];
     caboPenalty: boolean;
 };
 export type Visibility = "hidden" | "owner" | "all";
@@ -31,7 +30,7 @@ export interface Card{
 export interface Player{
     id: string;
     name: string;
-    hand: Card[];
+    hand: (Card | null)[];
     drawnCard?: Card;
     isHost: boolean;
     hasBurned: boolean;
@@ -49,6 +48,7 @@ export interface GameState{
     countdownStartedAt?: number;
     pendingCardPower?: PendingCardPower;
     matchReceiverId?: string;
+    matchReceiverIndex?: number;
     isCardMatched: boolean;
     isCaboCalled: boolean;
     caboCaller?: Player;
