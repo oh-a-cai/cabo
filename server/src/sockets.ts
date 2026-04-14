@@ -3,6 +3,30 @@ import { Server, Socket } from "socket.io";
 import { startGame, playerReady, drawCard, discardCard, confirmPowerSelection, finishPower, swapCard, matchCard, giveCardToPlayer, callCabo } from "./gameEngine";
 import type { GameState, Player, SocketResponse } from "./../../shared/types";
 
+function filterGameStateForPlayer(game: GameState, playerId: string): GameState {
+  return {
+    ...game,
+    deck: game.deck.map(card => ({ ...card, rank: "hidden" as any, suit: "hidden" as any, value: 0 })),
+    players: game.players.map(player => ({
+      ...player,
+      hand: player.hand.map(card => {
+        const isVisible =
+          card.visibility === "all" ||
+          (card.visibility === "owner" && player.id === playerId) ||
+          card.peekerId === playerId;
+        return isVisible ? card : { ...card, rank: "hidden" as any, suit: "hidden" as any, value: 0 };
+      }),
+      drawnCard: player.id === playerId ? player.drawnCard : undefined,
+    })),
+  };
+}
+
+function emitGameState(io: Server, game: GameState) {
+  game.players.forEach(player => {
+    io.to(player.id).emit("gameState", filterGameStateForPlayer(game, player.id));
+  });
+}
+
 export function initializeSockets(io: Server, games: Map<string, GameState>) {
   io.on("connection", (socket: Socket) => {
     logger.info(`User Connected: ${socket.id}`);
@@ -97,7 +121,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
     
       startGame(game);
     
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
     });
 
     socket.on("playerReady", (roomId: string, callback: (res: SocketResponse) => void) => {
@@ -111,14 +135,14 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
 
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
     
       if (game.countdownStartedAt) {
         setTimeout(() => {
           game.players.forEach(p => p.hand.forEach(card => card.visibility = "hidden"));
           game.gamePhase = "playing";
           game.countdownStartedAt = undefined;
-          io.to(roomId).emit("gameState", game);
+          emitGameState(io, game);
         }, 5000);
       }
 
@@ -136,7 +160,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
       
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
       callback?.({ success: true });
     });
 
@@ -151,7 +175,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
       
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
       callback?.({ success: true });
     });
 
@@ -166,7 +190,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
 
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
       callback?.({ success: true });
     });
 
@@ -181,7 +205,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
 
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
       callback?.({ success: true });
     });
 
@@ -196,7 +220,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
       
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
       callback?.({ success: true });
     });
 
@@ -211,7 +235,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
       
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
       callback?.({ success: true });
     });
 
@@ -226,7 +250,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
 
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
       callback?.({ success: true });
     });
 
@@ -241,7 +265,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
       
-      io.to(roomId).emit("gameState", game);
+      emitGameState(io, game);
       callback?.({ success: true });
     });
 
@@ -251,7 +275,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.({ error: `Room ${roomId} does not exist.` });
       }
 
-      callback?.(game); // returns gameState as response
+      callback?.(filterGameStateForPlayer(game, socket.id)); // returns gameState as response
     });
     
     socket.on("disconnect", () => {

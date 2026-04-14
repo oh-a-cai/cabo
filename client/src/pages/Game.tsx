@@ -237,6 +237,12 @@ export default function Game() {
   
     return `/assets/Deck_of_cards/${card.id}.png`;
   };
+
+  const getCardAlt = (card: Card, ownerId: string) => {
+    const isMe = ownerId === socket.id;
+    const isVisible = card.visibility === "all" || (card.visibility === "owner" && isMe) || card.peekerId === socket.id;
+    return isVisible ? card.id : "back of card";
+  };
   
   if (gameState.gamePhase === "setup") {
     return (
@@ -279,7 +285,7 @@ export default function Game() {
               {result.playerHand.map(card => (
                 <img
                   src={getCardImage(card, result.playerId)}
-                  alt={card.id}
+                  alt={getCardAlt(card, result.playerId)}
                   className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
                 />
               ))}
@@ -342,7 +348,7 @@ export default function Game() {
           {me?.hand.map(card => (
             <img
               src={getCardImage(card, me!.id)}
-              alt={card.id}
+              alt={getCardAlt(card, me!.id)}
               onClick={() => handleCardClick(card.id)}
               className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
             />
@@ -371,7 +377,7 @@ export default function Game() {
                   {me?.hand.map(card => (
                     <img
                       src={getCardImage(card, me.id)}
-                      alt={card.id}
+                      alt={getCardAlt(card, me.id)}
                       onClick={() => setSelectedCard(card.id)}
                       className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200 
                         ${selectedCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
@@ -407,7 +413,7 @@ export default function Game() {
                       {player.hand.map(card => (
                         <img
                           src={getCardImage(card, player.id)}
-                          alt={card.id}
+                          alt={getCardAlt(card, player.id)}
                           onClick={() => {setSelectedTargetCard(card.id)}}
                           className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200
                             ${selectedTargetCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
@@ -444,7 +450,7 @@ export default function Game() {
                     {me?.hand.map(card => (
                       <img
                         src={getCardImage(card, me.id)}
-                        alt={card.id}
+                        alt={getCardAlt(card, me.id)}
                         onClick={() => setSelectedCard(card.id)}
                         className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200
                           ${selectedCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
@@ -461,7 +467,7 @@ export default function Game() {
                         {player.hand.map(card => (
                           <img
                             src={getCardImage(card, player.id)}
-                            alt={card.id}
+                            alt={getCardAlt(card, player.id)}
                             onClick={() => {setSelectedTargetCard(card.id)}}
                             className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200
                               ${selectedTargetCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
@@ -492,7 +498,7 @@ export default function Game() {
                 {player.hand.map(card => (
                   <img
                     src={getCardImage(card, player.id)}
-                    alt={card.id}
+                    alt={getCardAlt(card, player.id)}
                     onClick={() => handleCardClick(card.id)}
                     className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
                   />
@@ -509,7 +515,7 @@ export default function Game() {
               {me?.hand.map(card => (
                 <img
                   src={getCardImage(card, me.id)}
-                  alt={card.id}
+                  alt={getCardAlt(card, me.id)}
                   onClick={() => setMatchGiveCard(card.id)}
                   className={`w-20 h-28 rounded-lg shadow-md cursor-pointer transition-transform duration-200 ${matchGiveCard === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
                 />
