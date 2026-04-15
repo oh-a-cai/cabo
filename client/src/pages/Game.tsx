@@ -249,23 +249,21 @@ export default function Game() {
       return null;
     }
 
-    const positions = player.handPositions ?? [];
     const cols = 4;
     const rows = 2;
-  
+    // render index mapping:
+    // 0 2 4 6
+    // 1 3 5 7
     return (
       <div className="flex gap-2">
         {Array.from({ length: cols }).map((_, col) => (
           <div key={col} className="flex flex-col gap-2">
             {Array.from({ length: rows }).map((_, row) => {
-              const index = col * 2 + row; 
-              const cardId = positions[index];
-              if (!cardId) {
-                return <div key={row} className="w-20 h-28" />;
-              }
-              const card = player.hand.find(c => c.id === cardId)!;
+              const index = col * 2 + row;
+              const card = player.hand[index] ?? null;
+
               if (!card) {
-                return <div key={row} className="w-20 h-28" />;
+                return <div key={index} className="w-20 h-28" />;
               }
 
               return (

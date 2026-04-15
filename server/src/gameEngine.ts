@@ -61,6 +61,7 @@ export function startGame(game: GameState) {
   game.countdownStartedAt = undefined;
   game.pendingCardPower = undefined;
   game.matchReceiverId = undefined;
+  game.matchReceiverIndex = undefined;
   game.isCardMatched = false;
   game.isCaboCalled = false;
   game.caboCaller = undefined;
@@ -70,12 +71,12 @@ export function startGame(game: GameState) {
 
   for (const player of game.players) { // deal cards
     player.hand = game.deck.splice(0, 4);
-    player.hand.map(card => card.visibility = "hidden");
+    player.hand.map(card => card!.visibility = "hidden");
     player.drawnCard = undefined;
     player.hasBurned = false;
     player.ready = false;
-
-    player.hand.slice(-2).forEach(card => card.visibility = "owner");
+    player.hand[1]!.visibility = "owner";
+    player.hand[3]!.visibility = "owner";
   }
 }
 
@@ -228,7 +229,7 @@ export function confirmPowerSelection(game: GameState, playerId: string, paramet
     if (!player) {
       return { error: "Player not found" };
     }
-    const myCard = player.hand.find(c => c.id === parameters.myCardId);
+    const myCard = player.hand.find(c => c?.id === parameters.myCardId);
     if (!myCard) {
       return { error: "Card not found" }
     }
@@ -237,7 +238,7 @@ export function confirmPowerSelection(game: GameState, playerId: string, paramet
     myCard.peekerId = playerId;
   }
   else if (power.type === "peekOther") {
-    const targetCard = game.players.flatMap(p => p.hand).find(c => c.id === parameters.targetCardId);
+    const targetCard = game.players.flatMap(p => p.hand).find(c => c?.id === parameters.targetCardId);
     if (!targetCard) {
       return { error: "Target card not found" };
     }
@@ -250,8 +251,8 @@ export function confirmPowerSelection(game: GameState, playerId: string, paramet
     if (!player ) {
       return { error: "Player not found" };
     }
-    const myCard = player.hand.find(c => c.id === parameters.myCardId);
-    const targetCard = game.players.flatMap(p => p.hand).find(c => c.id === parameters.targetCardId);
+    const myCard = player.hand.find(c => c?.id === parameters.myCardId);
+    const targetCard = game.players.flatMap(p => p.hand).find(c => c?.id === parameters.targetCardId);
     if (!myCard || !targetCard) {
       return { error: "Cards not found" };
     }
@@ -277,19 +278,19 @@ export function finishPower(game: GameState, playerId: string): SocketResponse {
   const power = game.pendingCardPower;
 
   if (power.type === "peekSelf") {
-    game.players.flatMap(p => p.hand).find(c => c.id === power.myCardId)!.peekerId = undefined;
+    game.players.flatMap(p => p.hand).find(c => c?.id === power.myCardId)!.peekerId = undefined;
   }
   else if (power.type === "peekOther") {
-    game.players.flatMap(p => p.hand).find(c => c.id === power.targetCardId)!.peekerId = undefined;
+    game.players.flatMap(p => p.hand).find(c => c?.id === power.targetCardId)!.peekerId = undefined;
   }
   else {
-    const player = game.players.find(p => p.hand.some(c => c.id === power.myCardId));
-    const targetPlayer = game.players.find(p => p.hand.some(c => c.id === power.targetCardId));
+    const player = game.players.find(p => p.hand.some(c => c?.id === power.myCardId));
+    const targetPlayer = game.players.find(p => p.hand.some(c => c?.id === power.targetCardId));
     if (!player || !targetPlayer) {
       return { error: "Players not found" };
     }
-    const myCardIndex = player.hand.findIndex(c => c.id === power.myCardId);
-    const targetCardIndex = targetPlayer.hand.findIndex(c => c.id === power.targetCardId);
+    const myCardIndex = player.hand.findIndex(c => c?.id === power.myCardId);
+    const targetCardIndex = targetPlayer.hand.findIndex(c => c?.id === power.targetCardId);
     if (myCardIndex === -1 || targetCardIndex === -1) {
       return { error: "Cards not found" };
     }
@@ -330,11 +331,11 @@ export function swapCard(game: GameState, playerId: string, cardId: string): Soc
     return { error: "No card to swap" };
   }
 
-  const index = player.hand.findIndex(c => c.id === cardId);
+  const index = player.hand.findIndex(c => c?.id === cardId);
   if (index === -1) {
     return { error: "Card not in hand" };
   }
-  const cardCopy = player.hand[index];
+  const cardCopy = player.hand[index]!;
   cardCopy.visibility = "all";
       
   if (player.drawnCard.visibility === "owner") {
@@ -347,7 +348,7 @@ export function swapCard(game: GameState, playerId: string, cardId: string): Soc
   nextTurn(game);
   game.turnPhase = "drawing";
 
-  if (player.hand.length === 0) {
+  if (player.hand.every(c => c === null)) {
     endGame(game);
   }
         
@@ -373,13 +374,13 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
     return { error: "Player not found" };
   }
 
-  const targetPlayer = game.players.find(p => p.hand.some(c => c.id === cardId));
+  const targetPlayer = game.players.find(p => p.hand.some(c => c?.id === cardId));
   if (!targetPlayer) {
     return { error: "Target player not found" };
   }
 
-  const index = targetPlayer.hand.findIndex(c => c.id === cardId);
-  const cardToMatch = targetPlayer.hand[index];
+  const index = targetPlayer.hand.findIndex(c => c?.id === cardId);
+  const cardToMatch = targetPlayer.hand[index]!;
 
   const topDiscardCard = game.discardPile[game.discardPile.length - 1];
   if (!topDiscardCard) {
@@ -393,7 +394,13 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
     if (game.deck.length > 0 && !player.hasBurned) {
       const drawnCard = game.deck.pop()!;
       drawnCard.visibility = "hidden";
-      player.hand.push(drawnCard);
+      const nullSlot = player.hand.findIndex(c => c === null);
+      if (nullSlot !== -1) {
+        player.hand[nullSlot] = drawnCard;
+      } 
+      else {
+        player.hand.push(drawnCard);
+      }
       player.hasBurned = true;
     }
     return { success: true };
@@ -401,17 +408,18 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
 
   game.isCardMatched = true;
 
-  const [discardedCard] = targetPlayer.hand.splice(index, 1);
-  discardedCard.visibility = "all";
-  game.discardPile.push(discardedCard);
+  targetPlayer.hand[index] = null;
+  cardToMatch.visibility = "all";
+  game.discardPile.push(cardToMatch);
 
   if (isSelfMatch) {
-    if (player.hand.length === 0) {
+    if (player.hand.every(c => c === null)) {
       endGame(game);
     }
   }
   else {
     game.matchReceiverId = targetPlayer.id;
+    game.matchReceiverIndex = index;
   }
 
   return { success: true };
@@ -428,16 +436,18 @@ export function giveCardToPlayer(game: GameState, playerId: string, myCardId: st
     return { error: "Players not found" };
   }
 
-  const cardIndex = player.hand.findIndex(c => c.id === myCardId);
+  const cardIndex = player.hand.findIndex(c => c?.id === myCardId);
   if (cardIndex === -1) {
     return { error: "Card not found in your hand" };
   }
 
-  const [givenCard] = player.hand.splice(cardIndex, 1);
-  targetPlayer.hand.push(givenCard);
+  const givenCard = player.hand[cardIndex]!;
+  player.hand[cardIndex] = null;
+  targetPlayer.hand[game.matchReceiverIndex!] = givenCard;
   game.matchReceiverId = undefined;
+  game.matchReceiverIndex = undefined;
 
-  if (player.hand.length === 0 || targetPlayer.hand.length === 0) {
+  if (player.hand.every(c => c === null) || targetPlayer.hand.every(c => c === null)) {
     endGame(game);
   }
 
@@ -488,19 +498,20 @@ export function endGame(game: GameState) {
   
   game.players.forEach(player => {
     player.hand.forEach(card => {
-      card.visibility = "all";
+      if (card) {
+        card.visibility = "all";
+      }
     });
   });
 
   const scores = game.players.map(player => ({
-    playerId: player.id,
-    score: player.hand.reduce((sum, card) => sum + card.value, 0),
-    playerHand: player.hand,
+    player,
+    score: player.hand.reduce((sum, card) => sum + (card?.value ?? 0), 0),
     caboPenalty: false
   }));
 
   if (game.caboCaller) {
-    const caller = scores.find(p => p.playerId === game.caboCaller!.id);
+    const caller = scores.find(p => p.player.id === game.caboCaller!.id);
     const minScore = Math.min(...scores.map(p => p.score));
 
     if (caller!.score !== minScore) {
@@ -510,6 +521,6 @@ export function endGame(game: GameState) {
   }
 
   scores.sort((a, b) => a.score - b.score);
-  game.winner = scores[0].playerId;
+  game.winner = scores[0].player.id;
   game.results = scores;
 }

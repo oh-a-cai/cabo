@@ -10,6 +10,9 @@ function filterGameStateForPlayer(game: GameState, playerId: string): GameState 
     players: game.players.map(player => ({
       ...player,
       hand: player.hand.map(card => {
+        if (card === null) {
+          return null;
+        }
         const isVisible =
           card.visibility === "all" ||
           (card.visibility === "owner" && player.id === playerId) ||
@@ -139,7 +142,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
     
       if (game.countdownStartedAt) {
         setTimeout(() => {
-          game.players.forEach(p => p.hand.forEach(card => card.visibility = "hidden"));
+          game.players.forEach(p => p.hand.forEach(card => card!.visibility = "hidden"));
           game.gamePhase = "playing";
           game.countdownStartedAt = undefined;
           emitGameState(io, game);
