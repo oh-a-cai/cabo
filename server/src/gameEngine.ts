@@ -14,7 +14,7 @@ export function createDeck(): Card[] {
         id: `${rank}${suit[0]}`,
         suit,
         rank,
-        value: RANK_VALUES[i],
+        value: rank === "K" && (suit === "Hearts" || suit === "Diamonds") ? -1 : RANK_VALUES[i], // red kings = -1
         visibility: "hidden",
         source: "deck"
       });
@@ -205,7 +205,6 @@ export function discardCard(game: GameState, playerId: string): SocketResponse {
 
   if (game.deck.length === 0) {
     endGame(game);
-    return { success: true };
   }
     
   return { success: true };
@@ -304,9 +303,30 @@ export function finishPower(game: GameState, playerId: string): SocketResponse {
 
   if (game.deck.length === 0) {
     endGame(game);
-    return { success: true };
   }
     
+  return { success: true };
+}
+
+export function skipPower(game: GameState, playerId: string): SocketResponse {
+  if (game.gamePhase !== "playing") {
+    return { error: "Game not in progress" };
+  }
+  if (game.turnPhase !== "power") {
+    return { error: "Must be in power phase" };
+  }
+  if (!game.pendingCardPower || game.pendingCardPower.playerId !== playerId) {
+    return { error: "No pending effect for this player" };
+  }
+
+  game.pendingCardPower = undefined;
+  nextTurn(game);
+  game.turnPhase = "drawing";
+
+  if (game.deck.length === 0) {
+    endGame(game);
+  }
+
   return { success: true };
 }
 

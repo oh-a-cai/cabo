@@ -162,6 +162,17 @@ export default function Game() {
     });
   };
 
+  const handleSkipPower = () => {
+    socket.emit("skipPower", roomId, (response: SocketResponse) => {
+      if ("error" in response) {
+        alert(response.error);
+        return;
+      }
+      setSelectedCard(null);
+      setSelectedTargetCard(null);
+    });
+  };
+
   const handleSwap = (cardId: string) => {
     socket.emit("swapCard", roomId, cardId, (response: SocketResponse) => {
       if ("error" in response) {
@@ -290,6 +301,16 @@ export default function Game() {
         <h1>Pregame Phase</h1>
         <p>You can see your bottom 2 cards. Memorize them!</p>
         <p>Players Ready: {readyCount} / {totalPlayers}</p>
+        {gameState.players.filter(p => !p.ready).length > 0 && (
+          <div>
+            <p>Waiting for:</p>
+            <ul>
+              {gameState.players.filter(p => !p.ready).map(p => (
+                <li key={p.id}>{p.name}{p.id === socket.id ? " (You)" : ""}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {renderHand(me)}
         {countdown !== null ? (
           <div>
@@ -297,7 +318,10 @@ export default function Game() {
             <h3>Game starting in {countdown}...</h3>
           </div>
         ) : (
-          <button onClick={handleReady} disabled={isReady}>{isReady ? "Ready" : "Ready up"}</button>
+          <div>
+            <p />
+            <button onClick={handleReady} disabled={isReady}>{isReady ? "Ready" : "Ready up"}</button>
+          </div>
         )}
       </div>
     );
@@ -306,11 +330,11 @@ export default function Game() {
   if (gameState.gamePhase === "finished") {
     return (
       <div>
-        <h1>{gameState.winner === socket.id ? "You won!" : `${gameState.winner} won!`}</h1>
+        <h1>{gameState.winner === socket.id ? "You won!" : `${gameState.players.find(p => p.id === gameState.winner)!.name} won!`}</h1>
         <h2>Results</h2>
         {gameState.results.map((result, index) => (
           <div key={result.player.id}>
-            <p>#{index + 1} — {result.player.id} {result.player.id === socket.id ? " (You)" : ""}</p>
+            <p>#{index + 1} — {result.player.name} {result.player.id === socket.id ? " (You)" : ""}</p>
             <p>Score: {result.score}</p>
             {renderHand(result.player)}
             {result.caboPenalty && <p>Cabo penalty applied (+10)</p>}
@@ -350,11 +374,11 @@ export default function Game() {
           <span>Click the discard pile to draw! (will be revealed to everyone)</span>
         </div>
       )}
-      <h3>Current Turn: {gameState.players[gameState.turnId]?.id}</h3>
+      <h3>Current Turn: {gameState.players[gameState.turnId]?.name}</h3>
       <h4>Turn phase: {gameState.turnPhase}</h4>
       {gameState.isCaboCalled && (
         <div>
-          <h2>{gameState.caboCaller!.id} has called Cabo!</h2>
+          <h2>{gameState.caboCaller!.name} has called Cabo!</h2>
             <p>Remaining turns: {gameState.remainingTurns!+1}</p>
         </div>
       )}
@@ -385,21 +409,30 @@ export default function Game() {
                 <h3 className="mb-2">Peek one of your cards</h3>
                 {renderHand(me, (cardId) => setSelectedCard(cardId), selectedCard)}
                 {!pendingCardPower.myCardId ? (
-                  <button
-                    disabled={!selectedCard}
-                    onClick={() => confirmPower({ myCardId: selectedCard! })}
-                    className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
-                  >
-                    Confirm
-                  </button>
+                  <div>
+                    <button
+                      disabled={!selectedCard}
+                      onClick={() => confirmPower({ myCardId: selectedCard! })}
+                      className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={handleSkipPower}
+                      className="px-4 py-2 bg-gray-400 text-white rounded ml-2"
+                    >
+                      Skip
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={finishPower}
                     className="px-4 py-2 bg-blue-500 text-white rounded"
                   >
-                    Finished
+                    Done
                   </button>
                 )}
+                
               </>
             )}
 
@@ -408,24 +441,32 @@ export default function Game() {
                 <h3 className="mb-2">Peek another player's card</h3>
                 {others.map(player => (
                   <div key={player.id} className="mb-2">
-                    <h4>{player.id}</h4>
+                    <h4>{player.name}</h4>
                     {renderHand(player, (cardId) => setSelectedTargetCard(cardId), selectedTargetCard)}
                   </div>
                 ))}
                 {!pendingCardPower.targetCardId ? (
-                  <button
-                    disabled={!selectedTargetCard}
-                    onClick={() => confirmPower({ targetCardId: selectedTargetCard! })}
-                    className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
-                  >
-                    Confirm
-                  </button>
+                  <div>
+                    <button
+                      disabled={!selectedTargetCard}
+                      onClick={() => confirmPower({ targetCardId: selectedTargetCard! })}
+                      className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={handleSkipPower}
+                      className="px-4 py-2 bg-gray-400 text-white rounded ml-2"
+                    >
+                      Skip
+                    </button>
+                  </div>
                 ) : (
                   <button 
                     onClick={finishPower}
                     className="px-4 py-2 bg-blue-500 text-white rounded"
                   >
-                    Finished
+                    Done
                   </button>
                 )}
               </>
@@ -442,7 +483,7 @@ export default function Game() {
                   <h4>Other Players</h4>
                   {others.map(player => (
                     <div key={player.id} className="mb-2">
-                      <h5>{player.id}</h5>
+                      <h5>{player.name}</h5>
                       {renderHand(player, (cardId) => setSelectedTargetCard(cardId), selectedTargetCard)}
                     </div>
                   ))}
@@ -452,7 +493,13 @@ export default function Game() {
                   onClick={() => confirmAndFinishPower({ myCardId: selectedCard!, targetCardId: selectedTargetCard! })}
                   className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
                 >
-                  Confirm Swap
+                  Confirm
+                </button>
+                <button
+                  onClick={handleSkipPower}
+                  className="px-4 py-2 bg-gray-400 text-white rounded ml-2"
+                >
+                  Skip
                 </button>
               </>
             )}
@@ -463,7 +510,7 @@ export default function Game() {
           <h2>Other Players</h2>
           {others.map(player => (
             <div>
-              <p>{player.id}'s Hand</p>
+              <p>{player.name}'s Hand</p>
               {renderHand(player, handleCardClick)}
             </div>
           ))}

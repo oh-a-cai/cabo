@@ -1,6 +1,6 @@
 import logger from 'jet-logger';
 import { Server, Socket } from "socket.io";
-import { startGame, playerReady, drawCard, discardCard, confirmPowerSelection, finishPower, swapCard, matchCard, giveCardToPlayer, callCabo } from "./gameEngine";
+import { startGame, playerReady, drawCard, discardCard, confirmPowerSelection, finishPower, skipPower, swapCard, matchCard, giveCardToPlayer, callCabo } from "./gameEngine";
 import type { GameState, Player, SocketResponse } from "./../../shared/types";
 
 function filterGameStateForPlayer(game: GameState, playerId: string): GameState {
@@ -34,7 +34,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
   io.on("connection", (socket: Socket) => {
     logger.info(`User Connected: ${socket.id}`);
   
-    socket.on("createRoom", () => {
+    socket.on("createRoom", (playerName: string) => {
       let roomId = Math.floor(Math.random() * 100).toString(); // generate random roomId between 0-99
       while (games.has(roomId)) { // room id taken
         roomId = Math.floor(Math.random() * 100).toString();
@@ -61,7 +61,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
   
       const player: Player = {
         id: socket.id,
-        name: "", // TEMP
+        name: playerName,
         hand: [],
         drawnCard: undefined,
         isHost: true,
@@ -73,7 +73,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       io.to(roomId).emit("roomUpdate", game);
     });
   
-    socket.on("joinRoom", (roomId: string, callback: (res: SocketResponse) => void) => {
+    socket.on("joinRoom", (roomId: string, playerName: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if(!game){ // room doesn't exist
         return callback?.({ error: `Room Id ${roomId} does not exist.` });
@@ -83,7 +83,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       if (!game.players.find(p => p.id === socket.id)) { // handles duplicate players
         const player: Player = {
           id: socket.id,
-          name: "", // TEMP
+          name: playerName,
           hand: [],
           drawnCard: undefined,
           isHost: false,
@@ -208,6 +208,21 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
 
+      emitGameState(io, game);
+      callback?.({ success: true });
+    });
+
+    socket.on("skipPower", (roomId: string, callback: (res: SocketResponse) => void) => {
+      const game = games.get(roomId);
+      if (!game) {
+        return callback?.({ error: "Room not found" });
+      }
+    
+      const response = skipPower(game, socket.id);
+      if ("error" in response) {
+        return callback?.(response);
+      }
+    
       emitGameState(io, game);
       callback?.({ success: true });
     });
