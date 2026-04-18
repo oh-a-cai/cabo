@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../clientSocket/socket";
-import type { GameState, Card, Player, SocketResponse } from "../../../shared/types";
+import type { GameState, SocketResponse } from "../../../shared/types";
+import CardImage from "../components/CardImage";
+import PlayerHand from "../components/PlayerHand";
+import SetupPhase from "../components/SetupPhase";
+import FinishedPhase from "../components/FinishedPhase";
+import CardPowerPanel from "../components/CardPowerPanel";
+import MatchPanel from "../components/MatchPanel";
 
 export default function Game() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -18,144 +24,96 @@ export default function Game() {
   const [matchGiveCard, setMatchGiveCard] = useState<string | null>(null);
 
   useEffect(() => {
-    // fetch game state on page load
     socket.emit("getGameState", roomId, (game: GameState | { error: string }) => {
       if ("error" in game) {
         alert(game.error);
-        navigate("/"); // invalid room
+        navigate("/");
         return;
       }
       setGameState(game);
     });
 
-    // listen for any new updates
     const handler = (game: GameState) => {
       setGameState(game);
       setPendingCardPower(game.pendingCardPower || null);
-      if (!game.countdownStartedAt) {
-        setCountdown(null);
-      }
+      if (!game.countdownStartedAt) setCountdown(null);
       if (game.matchReceiverId && game.matchReceiverId !== socket.id) {
         setIsMatching(true);
         setMatchReceiverId(game.matchReceiverId);
-      } 
-      else {
+      } else {
         setIsMatching(false);
         setMatchReceiverId(null);
         setMatchGiveCard(null);
       }
     };
     socket.on("gameState", handler);
-
-    return () => {
-      socket.off("gameState", handler);
-    };
+    return () => { socket.off("gameState", handler); };
   }, [roomId, navigate]);
 
   useEffect(() => {
     if (!gameState?.countdownStartedAt) return;
-  
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - gameState.countdownStartedAt!) / 1000);
-      const remaining = Math.max(5 - elapsed, 0);
-      setCountdown(remaining);
+      setCountdown(Math.max(5 - elapsed, 0));
     }, 500);
-  
     return () => clearInterval(interval);
   }, [gameState?.countdownStartedAt]);
 
-  if (!gameState) {
-    return <p>Loading game...</p>;
-  }
+  if (!gameState) return <p>Loading game...</p>;
 
-  const me = gameState.players.find(player => player.id === socket.id);
-  const others = gameState.players.filter(player => player.id !== socket.id);
+  const me = gameState.players.find(p => p.id === socket.id);
+  const others = gameState.players.filter(p => p.id !== socket.id);
   const isMyTurn = gameState.players[gameState.turnId].id === me?.id;
-
   const canDraw = isMyTurn && gameState.turnPhase === "drawing";
   const canAct = isMyTurn && gameState.turnPhase === "action";
 
-  
-  const isReady = me?.ready === true;
-  const readyCount = gameState?.players.filter(p => p.ready).length;
-  const totalPlayers = gameState?.players.length;
+  // --- Socket handlers ---
 
   const handleReady = () => {
-    socket.emit("playerReady", roomId, (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
+    socket.emit("playerReady", roomId, (res: SocketResponse) => {
+      if ("error" in res) alert(res.error);
     });
   };
-  
+
   const handleDrawFromDeck = () => {
-    if (!canDraw) {
-      return;
-    }
-    socket.emit("drawCard", roomId, "deck", (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
+    if (!canDraw) return;
+    socket.emit("drawCard", roomId, "deck", (res: SocketResponse) => {
+      if ("error" in res) alert(res.error);
     });
   };
 
   const handleDrawFromDiscard = () => {
-    if (!canDraw) {
-      return;
-    }
-    socket.emit("drawCard", roomId, "discard", (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
+    if (!canDraw) return;
+    socket.emit("drawCard", roomId, "discard", (res: SocketResponse) => {
+      if ("error" in res) alert(res.error);
     });
   };
 
   const handleDiscard = () => {
-    socket.emit("discardCard", roomId, (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
+    socket.emit("discardCard", roomId, (res: SocketResponse) => {
+      if ("error" in res) alert(res.error);
     });
   };
 
-  const confirmPower = (parameters: { myCardId?: string; targetCardId?: string }) => {
-    socket.emit("confirmPower", roomId, parameters, (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
+  const confirmPower = (params: { myCardId?: string; targetCardId?: string }) => {
+    socket.emit("confirmPower", roomId, params, (res: SocketResponse) => {
+      if ("error" in res) alert(res.error);
     });
   };
-  
+
   const finishPower = () => {
-    socket.emit("finishPower", roomId, (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
-      
+    socket.emit("finishPower", roomId, (res: SocketResponse) => {
+      if ("error" in res) { alert(res.error); return; }
       setSelectedCard(null);
       setSelectedTargetCard(null);
     });
   };
 
-  const confirmAndFinishPower = (parameters: { myCardId?: string; targetCardId?: string }) => {
-    socket.emit("confirmPower", roomId, parameters, (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
-
-      socket.emit("finishPower", roomId, (res: SocketResponse) => {
-        if ("error" in res) {
-          alert(res.error);
-          return;
-        }
-
+  const confirmAndFinishPower = (params: { myCardId?: string; targetCardId?: string }) => {
+    socket.emit("confirmPower", roomId, params, (res: SocketResponse) => {
+      if ("error" in res) { alert(res.error); return; }
+      socket.emit("finishPower", roomId, (res2: SocketResponse) => {
+        if ("error" in res2) { alert(res2.error); return; }
         setSelectedCard(null);
         setSelectedTargetCard(null);
       });
@@ -163,31 +121,22 @@ export default function Game() {
   };
 
   const handleSkipPower = () => {
-    socket.emit("skipPower", roomId, (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
+    socket.emit("skipPower", roomId, (res: SocketResponse) => {
+      if ("error" in res) { alert(res.error); return; }
       setSelectedCard(null);
       setSelectedTargetCard(null);
     });
   };
 
   const handleSwap = (cardId: string) => {
-    socket.emit("swapCard", roomId, cardId, (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
+    socket.emit("swapCard", roomId, cardId, (res: SocketResponse) => {
+      if ("error" in res) alert(res.error);
     });
   };
 
   const handleMatchCard = (cardId: string) => {
-    socket.emit("matchCard", roomId, cardId, (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
+    socket.emit("matchCard", roomId, cardId, (res: SocketResponse) => {
+      if ("error" in res) { alert(res.error); return; }
       const receiverId = gameState?.matchReceiverId;
       if (receiverId && receiverId !== socket.id) {
         setIsMatching(true);
@@ -198,9 +147,7 @@ export default function Game() {
 
   const giveCardToPlayer = (myCardId: string) => {
     socket.emit("giveCardToPlayer", roomId, { myCardId }, (res: SocketResponse) => {
-      if ("error" in res) {
-        alert(res.error);
-      }
+      if ("error" in res) alert(res.error);
       setIsMatching(false);
       setMatchReceiverId(null);
       setMatchGiveCard(null);
@@ -209,19 +156,13 @@ export default function Game() {
 
   const handleCardClick = (cardId: string) => {
     if (!gameState || !me) return;
-
-    // If player is in the middle of giving a card, block other actions
     if (isMatching) {
       alert("You must give a card to complete the previous match first.");
       return;
     }
-
-    const canSwap = canAct && me.drawnCard;
-    const canMatch = gameState.turnPhase === "drawing" || gameState.turnPhase === "power";
-
-    if (canSwap) {
+    if (canAct && me.drawnCard) {
       handleSwap(cardId);
-    } else if (canMatch) {
+    } else if (gameState.turnPhase === "drawing" || gameState.turnPhase === "power") {
       handleMatchCard(cardId);
     } else {
       alert("You cannot act on this card right now.");
@@ -229,172 +170,98 @@ export default function Game() {
   };
 
   const handleCallCabo = () => {
-    socket.emit("callCabo", roomId, (response: SocketResponse) => {
-      if ("error" in response) {
-        alert(response.error);
-        return;
-      }
+    socket.emit("callCabo", roomId, (res: SocketResponse) => {
+      if ("error" in res) alert(res.error);
     });
   };
 
-  const getCardImage = (card: Card, ownerId: string) => {
-    const isMe = ownerId === socket.id;
-    
-    const isVisible = card.visibility === "all" || (card.visibility === "owner" && isMe) || card.peekerId === socket.id;
-    
-    if (!isVisible) {
-      return "/assets/Deck_of_cards/back.png";
-    }
-  
-    return `/assets/Deck_of_cards/${card.id}.png`;
-  };
+  // --- Phase renders ---
 
-  const getCardAlt = (card: Card, ownerId: string) => {
-    const isMe = ownerId === socket.id;
-    const isVisible = card.visibility === "all" || (card.visibility === "owner" && isMe) || card.peekerId === socket.id;
-    return isVisible ? card.id : "back of card";
-  };
-
-  const renderHand = (player: Player | undefined, clickHandler?: (cardId: string) => void, selectedCardId?: string | null) => {
-    if (!player) {
-      return null;
-    }
-
-    const cols = 4;
-    const rows = 2;
-    // render index mapping:
-    // 0 2 4 6
-    // 1 3 5 7
-    return (
-      <div className="flex gap-2">
-        {Array.from({ length: cols }).map((_, col) => (
-          <div key={col} className="flex flex-col gap-2">
-            {Array.from({ length: rows }).map((_, row) => {
-              const index = col * 2 + row;
-              const card = player.hand[index] ?? null;
-
-              if (!card) {
-                return <div key={index} className="w-20 h-28" />;
-              }
-
-              return (
-                <img
-                  key={card.id}
-                  src={getCardImage(card, player.id)}
-                  alt={getCardAlt(card, player.id)}
-                  onClick={() => clickHandler?.(card.id)}
-                  className={`w-20 h-28 rounded-lg shadow-md transition-transform duration-200
-                    ${clickHandler ? "cursor-pointer" : ""}
-                    ${selectedCardId === card.id ? "ring-4 ring-blue-400" : "hover:scale-110 hover:shadow-xl"}`}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    );
-  };
-  
   if (gameState.gamePhase === "setup") {
     return (
-      <div>
-        <h1>Pregame Phase</h1>
-        <p>You can see your bottom 2 cards. Memorize them!</p>
-        <p>Players Ready: {readyCount} / {totalPlayers}</p>
-        {gameState.players.filter(p => !p.ready).length > 0 && (
-          <div>
-            <p>Waiting for:</p>
-            <ul>
-              {gameState.players.filter(p => !p.ready).map(p => (
-                <li key={p.id}>{p.name}{p.id === socket.id ? " (You)" : ""}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {renderHand(me)}
-        {countdown !== null ? (
-          <div>
-            <h2>All players Ready!</h2>
-            <h3>Game starting in {countdown}...</h3>
-          </div>
-        ) : (
-          <div>
-            <p />
-            <button onClick={handleReady} disabled={isReady}>{isReady ? "Ready" : "Ready up"}</button>
-          </div>
-        )}
-      </div>
+      <SetupPhase
+        me={me!}
+        players={gameState.players}
+        countdown={countdown}
+        readyCount={gameState.players.filter(p => p.ready).length}
+        totalPlayers={gameState.players.length}
+        isReady={me?.ready === true}
+        onReady={handleReady}
+      />
     );
   }
 
   if (gameState.gamePhase === "finished") {
     return (
-      <div>
-        <h1>{gameState.winner === socket.id ? "You won!" : `${gameState.players.find(p => p.id === gameState.winner)!.name} won!`}</h1>
-        <h2>Results</h2>
-        {gameState.results.map((result, index) => (
-          <div key={result.player.id}>
-            <p>#{index + 1} — {result.player.name} {result.player.id === socket.id ? " (You)" : ""}</p>
-            <p>Score: {result.score}</p>
-            {renderHand(result.player)}
-            {result.caboPenalty && <p>Cabo penalty applied (+10)</p>}
-          </div>
-        ))}
-  
-        <button onClick={() => navigate(`/room/${roomId}`)}>Back to Lobby</button>
-      </div>
+      <FinishedPhase
+        gameState={gameState}
+        onBackToLobby={() => navigate(`/room/${roomId}`)}
+      />
     );
   }
-  
+
+  const topDeckCard = gameState.deck.at(-1);
+  const topDiscardCard = gameState.discardPile.at(-1);
+
   return (
     <div>
       <h1>Room: {roomId}</h1>
       <h2>Game Phase: {gameState.gamePhase}</h2>
+
       <h3>Deck: {gameState.deck.length} cards remaining</h3>
-      {gameState.deck.at(-1) && (
+      {topDeckCard && (
         <div>
-          <img
-            src={getCardImage(gameState.deck.at(-1)!, "deck")}
-            alt="top of deck"
+          <CardImage
+            card={topDeckCard}
+            ownerId="deck"
             onClick={handleDrawFromDeck}
-            className={`w-20 h-28 rounded-lg shadow-md hover:scale-110 hover:shadow-xl transition-transform duration-200 ${!canDraw ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+            className={`w-20 h-28 rounded-lg shadow-md hover:scale-110 hover:shadow-xl transition-transform duration-200
+              ${!canDraw ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
           />
           <span>Click the deck to draw!</span>
         </div>
       )}
+
       <h3>Discard Pile: {gameState.discardPile.length} cards</h3>
-      {gameState.discardPile.at(-1) && (
+      {topDiscardCard && (
         <div>
-          <img
-            src={getCardImage(gameState.discardPile.at(-1)!, "discard")}
-            alt="top of discard pile"
+          <CardImage
+            card={topDiscardCard}
+            ownerId="discard"
             onClick={handleDrawFromDiscard}
-            className={`w-20 h-28 rounded-lg shadow-md hover:scale-110 hover:shadow-xl transition-transform duration-200 ${!canDraw ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+            className={`w-20 h-28 rounded-lg shadow-md hover:scale-110 hover:shadow-xl transition-transform duration-200
+              ${!canDraw ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
           />
           <span>Click the discard pile to draw! (will be revealed to everyone)</span>
         </div>
       )}
+
       <h3>Current Turn: {gameState.players[gameState.turnId]?.name}</h3>
       <h4>Turn phase: {gameState.turnPhase}</h4>
+
       {gameState.isCaboCalled && (
         <div>
           <h2>{gameState.caboCaller!.name} has called Cabo!</h2>
-            <p>Remaining turns: {gameState.remainingTurns!+1}</p>
+          <p>Remaining turns: {gameState.remainingTurns! + 1}</p>
         </div>
       )}
+
       <div>
-        <button onClick={handleCallCabo} disabled={!canDraw || gameState.isCaboCalled}>Call Cabo</button>
+        <button onClick={handleCallCabo} disabled={!canDraw || gameState.isCaboCalled}>
+          Call Cabo
+        </button>
       </div>
 
       <div>
         <h2>Your Hand</h2>
-        {renderHand(me, handleCardClick)}
+        {me && <PlayerHand player={me} onCardClick={handleCardClick} />}
+
         {me?.drawnCard && (
           <div>
             <h3>Drawn Card:</h3>
-            <img
-              src={getCardImage(me.drawnCard, me!.id)}
-              alt={me.drawnCard.id}
+            <CardImage
+              card={me.drawnCard}
+              ownerId={me.id}
               onClick={handleDiscard}
               className="w-20 h-28 rounded-lg shadow-md cursor-pointer hover:scale-110 hover:shadow-xl transition-transform duration-200"
             />
@@ -402,132 +269,40 @@ export default function Game() {
           </div>
         )}
 
-        {pendingCardPower && pendingCardPower.playerId === socket.id && (
-          <div>
-            {pendingCardPower.type === "peekSelf" && (
-              <>
-                <h3 className="mb-2">Peek one of your cards</h3>
-                {renderHand(me, (cardId) => setSelectedCard(cardId), selectedCard)}
-                {!pendingCardPower.myCardId ? (
-                  <div>
-                    <button
-                      disabled={!selectedCard}
-                      onClick={() => confirmPower({ myCardId: selectedCard! })}
-                      className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={handleSkipPower}
-                      className="px-4 py-2 bg-gray-400 text-white rounded ml-2"
-                    >
-                      Skip
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={finishPower}
-                    className="px-4 py-2 bg-blue-500 text-white rounded"
-                  >
-                    Done
-                  </button>
-                )}
-                
-              </>
-            )}
-
-            {pendingCardPower.type === "peekOther" && (
-              <>
-                <h3 className="mb-2">Peek another player's card</h3>
-                {others.map(player => (
-                  <div key={player.id} className="mb-2">
-                    <h4>{player.name}</h4>
-                    {renderHand(player, (cardId) => setSelectedTargetCard(cardId), selectedTargetCard)}
-                  </div>
-                ))}
-                {!pendingCardPower.targetCardId ? (
-                  <div>
-                    <button
-                      disabled={!selectedTargetCard}
-                      onClick={() => confirmPower({ targetCardId: selectedTargetCard! })}
-                      className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={handleSkipPower}
-                      className="px-4 py-2 bg-gray-400 text-white rounded ml-2"
-                    >
-                      Skip
-                    </button>
-                  </div>
-                ) : (
-                  <button 
-                    onClick={finishPower}
-                    className="px-4 py-2 bg-blue-500 text-white rounded"
-                  >
-                    Done
-                  </button>
-                )}
-              </>
-            )}
-
-            {pendingCardPower.type === "swap" && (
-              <>
-                <h3 className="mb-2">Swap a card with another player</h3>
-                <div className="mb-2">
-                  <h4>Your Hand</h4>
-                  {renderHand(me, (cardId) => setSelectedCard(cardId), selectedCard)}
-                </div>
-                <div className="mb-2">
-                  <h4>Other Players</h4>
-                  {others.map(player => (
-                    <div key={player.id} className="mb-2">
-                      <h5>{player.name}</h5>
-                      {renderHand(player, (cardId) => setSelectedTargetCard(cardId), selectedTargetCard)}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  disabled={!selectedCard || !selectedTargetCard}
-                  onClick={() => confirmAndFinishPower({ myCardId: selectedCard!, targetCardId: selectedTargetCard! })}
-                  className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
-                >
-                  Confirm
-                </button>
-                <button
-                  onClick={handleSkipPower}
-                  className="px-4 py-2 bg-gray-400 text-white rounded ml-2"
-                >
-                  Skip
-                </button>
-              </>
-            )}
-          </div>
+        {pendingCardPower && pendingCardPower.playerId === socket.id && me && (
+          <CardPowerPanel
+            pendingCardPower={pendingCardPower}
+            me={me}
+            others={others}
+            selectedCard={selectedCard}
+            selectedTargetCard={selectedTargetCard}
+            onSelectCard={setSelectedCard}
+            onSelectTargetCard={setSelectedTargetCard}
+            onConfirmPower={confirmPower}
+            onFinishPower={finishPower}
+            onConfirmAndFinishPower={confirmAndFinishPower}
+            onSkipPower={handleSkipPower}
+          />
         )}
 
         <div>
           <h2>Other Players</h2>
           {others.map(player => (
-            <div>
+            <div key={player.id}>
               <p>{player.name}'s Hand</p>
-              {renderHand(player, handleCardClick)}
+              <PlayerHand player={player} onCardClick={handleCardClick} />
             </div>
           ))}
         </div>
 
-        {isMatching && matchReceiverId && (
-          <div className="mt-4 p-4 border rounded bg-gray-100">
-            <h3>Select a card from your hand to give to {matchReceiverId}</h3>
-            {renderHand(me, (cardId) => setMatchGiveCard(cardId), matchGiveCard)}
-            <button
-              disabled={!matchGiveCard}
-              onClick={() => giveCardToPlayer(matchGiveCard!)}
-              className="mt-2 px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
-            >
-              Confirm
-            </button>
-          </div>
+        {isMatching && matchReceiverId && me && (
+          <MatchPanel
+            matchReceiverId={matchReceiverId}
+            me={me}
+            matchGiveCard={matchGiveCard}
+            onSelectCard={setMatchGiveCard}
+            onConfirm={() => giveCardToPlayer(matchGiveCard!)}
+          />
         )}
       </div>
     </div>
