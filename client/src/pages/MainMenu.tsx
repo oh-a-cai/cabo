@@ -52,37 +52,37 @@ export default function MainMenu() {
         {/* Main Menu */}
         <div className="relative w-[100vw] min-h-screen flex flex-col items-center justify-center select-none">
           {/* Title Format */}
-          <div className="flex flex-col items-center" style={{ marginTop: '-24rem' }}>
+          <div className="flex flex-col items-center" style={{ marginTop: '-48vh' }}>
             <div className="relative flex flex-col items-center">
               {/* Left Card 1 */}
               <div
                 className="absolute"
                 style={{
-                  width: '3.5rem', height: '5.5rem',
+                  width: '3.5rem', height: '5rem',
                   borderRadius: '1rem',
                   backgroundColor: 'white',
-                  border: '12.5px solid #2F3252',
+                  border: '0.8rem solid #2F3252',
                   transform: 'rotate(-25deg)',
-                  top: '3rem', left: '3.5rem',
+                  top: '3rem', left: '1rem',
                 }}
               />
               {/* Left Card 2 */}
               <div
                 className="absolute"
                 style={{
-                  width: '3.5rem', height: '5.5rem',
+                  width: '3.5rem', height: '5rem',
                   borderRadius: '1rem',
                   backgroundColor: 'white',
-                  border: '12.5px solid #2F3252',
+                  border: '0.8rem solid #2F3252',
                   transform: 'rotate(-25deg)',
-                  top: '0rem', left: '5rem',
+                  top: '0rem', left: '2.5rem',
                 }}
               />
               {/* Title */}
               <div
                 className="relative z-10"
                 style={{
-                  fontSize: 'clamp(5.5rem, 11vw, 9rem)',
+                  fontSize: '9rem',
                   fontWeight: 900,
                   color: 'white',
                   WebkitTextStroke: '0.22em #2F3252',
@@ -97,36 +97,36 @@ export default function MainMenu() {
               <div
                 className="absolute"
                 style={{
-                  width: '3.5rem', height: '5.5rem',
+                  width: '3.5rem', height: '5rem',
                   borderRadius: '1rem',
                   backgroundColor: 'white',
-                  border: '12.5px solid #2F3252',
+                  border: '0.8rem solid #2F3252',
                   transform: 'rotate(25deg)',
-                  top: '3rem', right: '3.5rem',
+                  top: '3rem', right: '1rem',
                 }}
               />
               {/* Right Card 2 */}
               <div
                 className="absolute"
                 style={{
-                  width: '3.5rem', height: '5.5rem',
+                  width: '3.5rem', height: '5rem',
                   borderRadius: '1rem',
                   backgroundColor: 'white',
-                  border: '12.5px solid #2F3252',
+                  border: '0.8rem solid #2F3252',
                   transform: 'rotate(25deg)',
-                  top: '0rem', right: '5rem',
+                  top: '0rem', right: '2.5rem',
                 }}
               />
               {/* Subtitle */}
               <div
                 className="relative z-10"
                 style={{
-                  fontSize: 'clamp(1rem, 2vw, 2.5rem)',
+                  fontSize: '1.8rem',
                   fontWeight: 900,
                   color: 'white',
-                  WebkitTextStroke: '10px #4B4665',
+                  WebkitTextStroke: '0.5rem #4B4665',
                   paintOrder: 'stroke fill',
-                  letterSpacing: '0.01em',
+                  letterSpacing: '0.02em',
                 }}
               >
                 The memory-based strategy card game
@@ -138,23 +138,23 @@ export default function MainMenu() {
           <div
             className="absolute top-1/2 flex items-center justify-center"
             style={{
-              width: 'clamp(22rem, 34vw, 34rem)',
-              height: '6rem',
+              width: '30rem',
+              height: '5rem',
               borderRadius: '1rem',
-              border: '5px solid #623F5D',
+              border: '0.3rem solid #623F5D',
               backgroundColor: '#FFFFFF',
             }}
           >
             <div
-              className="absolute inset-[6px]"
-              style={{ backgroundColor: '#D4C7D2', borderRadius: '0.5rem' }}
+              className="absolute"
+              style={{ inset: '0.4rem', backgroundColor: '#D4C7D2', borderRadius: '0.5rem' }}
             />
             <input
               className="relative z-10 flex-1 bg-transparent outline-none font-black text-[#4B4665] placeholder-[#FFFFFF]/60"
               style={{
-                fontSize: 'clamp(1.3rem, 2.5vw, 2.5rem)',
+                fontSize: '2.2rem',
                 border: 'none',
-                marginLeft: '2rem',
+                marginLeft: '1.2rem',
               }}
               placeholder="enter nickname"
               value={name}
@@ -165,16 +165,16 @@ export default function MainMenu() {
             <button
               onClick={() => setNameSet(true)}
               disabled={!name}
-              className="relative flex items-center justify-center right-6 transition-transform hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+              className="relative flex items-center justify-center right-4 transition-transform hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
               style={{
-                width: '4.5rem',
-                height: '4.5rem',
+                width: '3.5rem',
+                height: '3.5rem',
                 backgroundColor: '#F5ED96',
                 borderRadius: '0.5rem',
-                border: '3px solid #4A4511',
+                border: '0.2rem solid #4A4511',
               }}
             >
-              <svg className="relative z-10" width="48" height="40" viewBox="0 0 70 87" fill="none">
+              <svg className="relative z-10" width="2.3rem" height="2.3rem" viewBox="0 0 70 87" fill="none">
                 <path
                   d="M68.1328 34.4821C74.7401 38.3423 74.7401 47.8914 68.1328 51.7516L20.0449 79.8453C13.3784 83.7401 5 78.9314 5 71.2106V15.0231C5 7.30222 13.3784 2.49355 20.0449 6.38831L68.1328 34.4821Z"
                   fill="#FFFDEA"
@@ -201,10 +201,10 @@ export default function MainMenu() {
             </svg>
             <span
               style={{
-                fontSize: '1.6rem',
+                fontSize: '1.4rem',
                 fontWeight: 900,
                 color: 'white',
-                WebkitTextStroke: '6px #C0392B',
+                WebkitTextStroke: '0.3rem #C0392B',
                 paintOrder: 'stroke fill',
                 letterSpacing: '0.05em',
               }}
@@ -231,7 +231,7 @@ export default function MainMenu() {
           <div className="flex flex-col items-center pt-8 pb-2">
             <div
               style={{
-                fontSize: 'clamp(2.8rem, 5vw, 4rem)',
+                fontSize: '3.5rem',
                 fontWeight: 900,
                 color: 'white',
                 WebkitTextStroke: '0.12em #2F3252',
@@ -244,10 +244,10 @@ export default function MainMenu() {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4em' }}>
                 <span style={{
                   display: 'inline-block',
-                  width: '1.1rem', height: '1.7rem',
+                  width: '1rem', height: '1.6rem',
                   borderRadius: '0.25rem',
                   backgroundColor: 'white',
-                  border: '4px solid #2F3252',
+                  border: '0.2rem solid #2F3252',
                   transform: 'rotate(-20deg)',
                   verticalAlign: 'middle',
                   marginBottom: '0.1em',
@@ -255,10 +255,10 @@ export default function MainMenu() {
                 CABO
                 <span style={{
                   display: 'inline-block',
-                  width: '1.1rem', height: '1.7rem',
+                  width: '1rem', height: '1.6rem',
                   borderRadius: '0.25rem',
                   backgroundColor: 'white',
-                  border: '4px solid #2F3252',
+                  border: '0.2rem solid #2F3252',
                   transform: 'rotate(20deg)',
                   verticalAlign: 'middle',
                   marginBottom: '0.1em',
@@ -267,10 +267,10 @@ export default function MainMenu() {
             </div>
             <div
               style={{
-                fontSize: 'clamp(0.7rem, 1.2vw, 1rem)',
+                fontSize: '0.85rem',
                 fontWeight: 700,
                 color: 'white',
-                WebkitTextStroke: '4px #4B4665',
+                WebkitTextStroke: '0.2rem #4B4665',
                 paintOrder: 'stroke fill',
                 letterSpacing: '0.01em',
               }}
@@ -283,11 +283,11 @@ export default function MainMenu() {
           <div
             className="relative flex flex-col items-center justify-around"
             style={{
-              width: 'clamp(22rem, 48vw, 46rem)',
-              minHeight: 'clamp(22rem, 42vh, 34rem)',
+              width: '38rem',
+              minHeight: '28rem',
               borderRadius: '2rem',
               background: 'linear-gradient(160deg, #9BAABF 0%, #7A8FA8 40%, #6B7E96 100%)',
-              border: '5px solid #B8C8D8',
+              border: '0.3rem solid #B8C8D8',
               boxShadow: '0 8px 40px rgba(0,0,0,0.45), inset 0 2px 4px rgba(255,255,255,0.15)',
               padding: '1.8rem 2.2rem',
               marginTop: '0.5rem',
@@ -305,10 +305,10 @@ export default function MainMenu() {
                 className="absolute"
                 style={{
                   ...pos,
-                  width: '2rem', height: '2rem',
+                  width: '1.5rem', height: '1.5rem',
                   borderRadius: '50%',
                   background: 'radial-gradient(circle at 35% 35%, #D0D8E0, #8A9BB0)',
-                  border: '2px solid #6A7A8E',
+                  border: '0.1rem solid #6A7A8E',
                   boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)',
                 }}
               />
@@ -320,8 +320,8 @@ export default function MainMenu() {
                 key={side}
                 className="absolute top-1/2 -translate-y-1/2"
                 style={{
-                  [side]: '0.55rem',
-                  width: '0.55rem',
+                  [side]: '0.5rem',
+                  width: '0.5rem',
                   height: '55%',
                   borderRadius: '0.3rem',
                   background: 'linear-gradient(180deg, #7A8FA8, #5A6E84)',
@@ -355,7 +355,7 @@ export default function MainMenu() {
                 <input
                   className="w-full bg-transparent outline-none font-black text-center tracking-widest"
                   style={{
-                    fontSize: 'clamp(1.2rem, 2.2vw, 1.8rem)',
+                    fontSize: '1.5rem',
                     color: '#8A9BB0',
                     letterSpacing: '0.12em',
                   }}
@@ -377,7 +377,7 @@ export default function MainMenu() {
                   style={{
                     borderRadius: '3rem',
                     background: 'linear-gradient(180deg, #5BC85B 0%, #3EA83E 50%, #2E8A2E 100%)',
-                    border: '3.5px solid #1F6B1F',
+                    border: '0.2rem solid #1F6B1F',
                     boxShadow: '0 6px 0 #1A5A1A, 0 8px 16px rgba(0,0,0,0.3)',
                     padding: '0.75rem 2rem',
                     transform: 'translateY(0)',
@@ -386,10 +386,10 @@ export default function MainMenu() {
                 >
                   <span
                     style={{
-                      fontSize: 'clamp(1.3rem, 2.5vw, 2rem)',
+                      fontSize: '1.8rem',
                       fontWeight: 900,
                       color: 'white',
-                      WebkitTextStroke: '5px #1A5A1A',
+                      WebkitTextStroke: '0.25rem #1A5A1A',
                       paintOrder: 'stroke fill',
                       letterSpacing: '0.08em',
                     }}
@@ -422,17 +422,17 @@ export default function MainMenu() {
                   style={{
                     borderRadius: '2rem',
                     background: 'linear-gradient(180deg, #FFE566 0%, #F5C800 50%, #D4A800 100%)',
-                    border: '3.5px solid #9A7A00',
+                    border: '0.2rem solid #9A7A00',
                     boxShadow: '0 6px 0 #8A6A00, 0 8px 16px rgba(0,0,0,0.3)',
                     padding: '0.75rem 2rem',
                   }}
                 >
                   <span
                     style={{
-                      fontSize: 'clamp(1.3rem, 2.5vw, 2rem)',
+                      fontSize: '1.8rem',
                       fontWeight: 900,
                       color: 'white',
-                      WebkitTextStroke: '5px #7A5500',
+                      WebkitTextStroke: '0.25rem #7A5500',
                       paintOrder: 'stroke fill',
                       letterSpacing: '0.08em',
                       display: 'block',

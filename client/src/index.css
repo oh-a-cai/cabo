@@ -6,6 +6,12 @@ html, body, #root {
   @apply m-0 p-0 w-full h-full;
 }
 
+@layer base {
+  html {
+    font-size: clamp(12px, 1.2vw, 28px);
+  }
+}
+
 @font-face {
   font-family: 'Noto Sans Lao SemiCondensed';
   src: url('./assets/NotoSansLao_SemiCondensed-Black.ttf') format('truetype');
