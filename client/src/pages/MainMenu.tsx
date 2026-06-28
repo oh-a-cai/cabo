@@ -193,18 +193,20 @@ export default function MainMenu() {
           {/* Back button */}
           <button
             onClick={goBack}
-            className="absolute top-6 left-6 z-20 flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+            className="absolute top-2 left-3 z-20 flex items-center gap-2 bg-transparent border-none transition-transform hover:scale-105 active:scale-95"
           >
             {/* Arrow triangle */}
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <path d="M18 4L8 14L18 24" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="1.5rem" height="1.5rem" viewBox="0 0 80 87" fill="none" style={{ transform: 'scaleX(-1)' }}>
+              <path d="M68.1328 34.4821C74.7401 38.3423 74.7401 47.8914 68.1328 51.7516L20.0449 79.8453C13.3784 83.7401 5 78.9314 5 71.2106V15.0231C5 7.30222 13.3784 2.49355 20.0449 6.38831L68.1328 34.4821Z"
+               stroke="#DD6969" strokeWidth="13" strokeLinecap="round" strokeLinejoin="round" fill='white'/>
             </svg>
+            
             <span
               style={{
-                fontSize: '1.4rem',
+                fontSize: '1.9rem',
                 fontWeight: 900,
                 color: 'white',
-                WebkitTextStroke: '0.3rem #C0392B',
+                WebkitTextStroke: '0.25em #DD6969',
                 paintOrder: 'stroke fill',
                 letterSpacing: '0.05em',
               }}
@@ -214,17 +216,19 @@ export default function MainMenu() {
           </button>
 
           {/* Settings gear */}
-          <button className="absolute top-6 right-6 z-20 transition-transform hover:scale-110 hover:rotate-45 active:scale-95" style={{ transition: 'transform 0.3s ease' }}>
-            <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 15a3 3 0 100-6 3 3 0 000 6z"
-                stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              />
-              <path
-                d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
-                stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              />
-            </svg>
+          <button className="absolute top-2 right-3 z-20 bg-transparent border-none transition-transform hover:scale-110 hover:rotate-45 active:scale-95" style={{ transition: 'transform 0.3s ease' }}>
+          <svg width="2.5rem" height="2.5rem" viewBox="0 0 24 24" fill="none">
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
+              fill="white"
+              stroke="#FF9F9F"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
           </button>
 
           {/* Compact title format */}
@@ -234,43 +238,79 @@ export default function MainMenu() {
                 fontSize: '3.5rem',
                 fontWeight: 900,
                 color: 'white',
-                WebkitTextStroke: '0.12em #2F3252',
+                WebkitTextStroke: '0.22em #2F3252',
                 paintOrder: 'stroke fill',
                 letterSpacing: '0.05em',
                 lineHeight: 1,
               }}
             >
               {/* Mini card decorations flanking the title */}
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4em' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                 <span style={{
                   display: 'inline-block',
-                  width: '1rem', height: '1.6rem',
+                  width: '1.2rem', height: '1.8rem',
                   borderRadius: '0.25rem',
                   backgroundColor: 'white',
-                  border: '0.2rem solid #2F3252',
-                  transform: 'rotate(-20deg)',
+                  border: '0.3rem solid #2F3252',
+                  transform: 'rotate(-25deg)',
                   verticalAlign: 'middle',
                   marginBottom: '0.1em',
+                  position: 'relative',
+                  top: '-0.6rem', 
+                  left: '2.7rem',
+                  zIndex: -10,
+                }} />
+                <span style={{
+                  display: 'inline-block',
+                  width: '1.2rem', height: '1.8rem',
+                  borderRadius: '0.25rem',
+                  backgroundColor: 'white',
+                  border: '0.3rem solid #2F3252',
+                  transform: 'rotate(-25deg)',
+                  verticalAlign: 'middle',
+                  marginBottom: '0.1em',
+                  position: 'relative',
+                  top: '0.6rem', 
+                  left: '0.4rem',
+                  zIndex: -15,
                 }} />
                 CABO
                 <span style={{
                   display: 'inline-block',
-                  width: '1rem', height: '1.6rem',
+                  width: '1.2rem', height: '1.8rem',
                   borderRadius: '0.25rem',
                   backgroundColor: 'white',
-                  border: '0.2rem solid #2F3252',
-                  transform: 'rotate(20deg)',
+                  border: '0.3rem solid #2F3252',
+                  transform: 'rotate(25deg)',
                   verticalAlign: 'middle',
                   marginBottom: '0.1em',
+                  position: 'relative',
+                  top: '-0.6rem', 
+                  right: '1.0rem',
+                  zIndex: -10,
+                }} />
+                <span style={{
+                  display: 'inline-block',
+                  width: '1.2rem', height: '1.8rem',
+                  borderRadius: '0.25rem',
+                  backgroundColor: 'white',
+                  border: '0.3rem solid #2F3252',
+                  transform: 'rotate(25deg)',
+                  verticalAlign: 'middle',
+                  marginBottom: '0.1em',
+                  position: 'relative',
+                  top: '0.6rem', 
+                  right: '2.3rem',
+                  zIndex: -15,
                 }} />
               </span>
             </div>
             <div
               style={{
                 fontSize: '0.85rem',
-                fontWeight: 700,
+                fontWeight: 900,
                 color: 'white',
-                WebkitTextStroke: '0.2rem #4B4665',
+                WebkitTextStroke: '0.22rem #4B4665',
                 paintOrder: 'stroke fill',
                 letterSpacing: '0.01em',
               }}
@@ -279,171 +319,114 @@ export default function MainMenu() {
             </div>
           </div>
 
-          {/* ── Control Panel ── */}
-          <div
-            className="relative flex flex-col items-center justify-around"
-            style={{
-              width: '38rem',
-              minHeight: '28rem',
-              borderRadius: '2rem',
-              background: 'linear-gradient(160deg, #9BAABF 0%, #7A8FA8 40%, #6B7E96 100%)',
-              border: '0.3rem solid #B8C8D8',
-              boxShadow: '0 8px 40px rgba(0,0,0,0.45), inset 0 2px 4px rgba(255,255,255,0.15)',
-              padding: '1.8rem 2.2rem',
-              marginTop: '0.5rem',
-            }}
-          >
-            {/* Corner bolts */}
-            {[
-              { top: '1rem', left: '1rem' },
-              { top: '1rem', right: '1rem' },
-              { bottom: '1rem', left: '1rem' },
-              { bottom: '1rem', right: '1rem' },
-            ].map((pos, i) => (
-              <div
-                key={i}
-                className="absolute"
-                style={{
-                  ...pos,
-                  width: '1.5rem', height: '1.5rem',
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle at 35% 35%, #D0D8E0, #8A9BB0)',
-                  border: '0.1rem solid #6A7A8E',
-                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)',
-                }}
-              />
-            ))}
-
-            {/* Vertical side rails */}
-            {['left', 'right'].map((side) => (
-              <div
-                key={side}
-                className="absolute top-1/2 -translate-y-1/2"
-                style={{
-                  [side]: '0.5rem',
-                  width: '0.5rem',
-                  height: '55%',
-                  borderRadius: '0.3rem',
-                  background: 'linear-gradient(180deg, #7A8FA8, #5A6E84)',
-                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)',
-                }}
-              />
-            ))}
-
-            {/* Top recessed panel — Join Room */}
+          {/* ── Room controls ── */}
+          <div className="relative flex flex-col items-center gap-[1.5vh]" style={{ marginTop: '1.5rem' }}>
+            {/* ENTER ROOM input */}
             <div
+              className="flex items-center justify-center"
               style={{
-                width: '100%',
-                borderRadius: '1.2rem',
-                background: 'linear-gradient(180deg, #58697C 0%, #4A5D70 100%)',
-                boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 3px rgba(0,0,0,0.3)',
-                padding: '1.2rem 1.4rem 1.4rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.9rem',
+                width: '26.13rem',
+                height: '5.26rem',
+                borderRadius: '1.41rem',
+                backgroundColor: '#CDD8FF',
+                padding: '0.25rem',
+                marginTop: '9vh',
               }}
             >
-              {/* ENTER ROOM input */}
               <div
+                className="flex items-center justify-center w-full h-full"
                 style={{
-                  borderRadius: '0.75rem',
-                  background: 'linear-gradient(180deg, #BCC8D4 0%, #C8D4DF 100%)',
-                  boxShadow: 'inset 0 3px 8px rgba(0,0,0,0.25)',
-                  padding: '0.7rem 1.2rem',
+                  borderRadius: '1.21rem',
+                  backgroundColor: '#D1D5E5',
+                  border: '0.28rem solid #4F5055',
+                  boxSizing: 'border-box',
                 }}
               >
                 <input
-                  className="w-full bg-transparent outline-none font-black text-center tracking-widest"
-                  style={{
-                    fontSize: '1.5rem',
-                    color: '#8A9BB0',
-                    letterSpacing: '0.12em',
-                  }}
-                  placeholder="ENTER ROOM"
+                  className="w-full bg-transparent outline-none border-none font-black text-center tracking-widest placeholder-[#B4B6BC]/60"
+                  style={{ fontSize: '2.47rem', color: '#ADB0B3', letterSpacing: '0.04em' }}
+                  placeholder="ENTER ROOM #"
                   value={room}
                   onChange={(e) => setRoom(e.target.value.toUpperCase())}
                   onKeyDown={(e) => { if (e.key === 'Enter' && room) joinRoom(); }}
                 />
               </div>
-
-              {/* JOIN ROOM button */}
-              <button
-                onClick={joinRoom}
-                disabled={!room}
-                className="relative w-full transition-transform hover:scale-[1.03] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ borderRadius: '3rem' }}
-              >
-                <div
-                  style={{
-                    borderRadius: '3rem',
-                    background: 'linear-gradient(180deg, #5BC85B 0%, #3EA83E 50%, #2E8A2E 100%)',
-                    border: '0.2rem solid #1F6B1F',
-                    boxShadow: '0 6px 0 #1A5A1A, 0 8px 16px rgba(0,0,0,0.3)',
-                    padding: '0.75rem 2rem',
-                    transform: 'translateY(0)',
-                    transition: 'transform 0.1s, box-shadow 0.1s',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: '1.8rem',
-                      fontWeight: 900,
-                      color: 'white',
-                      WebkitTextStroke: '0.25rem #1A5A1A',
-                      paintOrder: 'stroke fill',
-                      letterSpacing: '0.08em',
-                    }}
-                  >
-                    JOIN ROOM
-                  </span>
-                </div>
-              </button>
             </div>
 
-            {/* Bottom recessed panel — Create Room */}
-            <div
+            {/* JOIN ROOM button */}
+            <button
+              onClick={joinRoom}
+              disabled={!room}
+              className="flex items-center justify-center border-none transition-transform hover:scale-[1.03] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                width: '100%',
-                borderRadius: '1.2rem',
-                background: 'linear-gradient(180deg, #6B7A8D 0%, #5C6C80 100%)',
-                boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.3)',
-                padding: '1rem 1.4rem',
-                display: 'flex',
-                justifyContent: 'center',
+                width: '14.28rem',
+                height: '3.78rem',
+                borderRadius: '0.8rem',
+                backgroundColor: '#284D2F',
+                padding: '0.2rem',
+                marginTop: '1rem',
               }}
             >
-              {/* CREATE ROOM button */}
-              <button
-                onClick={createRoom}
-                className="relative w-full transition-transform hover:scale-[1.03] active:scale-[0.97]"
-                style={{ borderRadius: '2rem' }}
+              <div
+                className="flex items-center justify-center w-full h-full"
+                style={{
+                  borderRadius: '0.6rem',
+                  background: 'linear-gradient(90deg, #95C060 0%, #4A9743 100%)',
+                  border: '0.25rem solid white',
+                  boxSizing: 'border-box',
+                }}
               >
-                <div
+                <span
                   style={{
-                    borderRadius: '2rem',
-                    background: 'linear-gradient(180deg, #FFE566 0%, #F5C800 50%, #D4A800 100%)',
-                    border: '0.2rem solid #9A7A00',
-                    boxShadow: '0 6px 0 #8A6A00, 0 8px 16px rgba(0,0,0,0.3)',
-                    padding: '0.75rem 2rem',
+                    fontSize: '1.88rem',
+                    fontWeight: 900,
+                    color: 'white',
+                    WebkitTextStroke: '0.45rem #4D7729',
+                    paintOrder: 'stroke fill',
+                    letterSpacing: '0.04em',
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: '1.8rem',
-                      fontWeight: 900,
-                      color: 'white',
-                      WebkitTextStroke: '0.25rem #7A5500',
-                      paintOrder: 'stroke fill',
-                      letterSpacing: '0.08em',
-                      display: 'block',
-                      lineHeight: 1.15,
-                    }}
-                  >
-                    CREATE<br />ROOM
-                  </span>
-                </div>
-              </button>
-            </div>
+                  JOIN ROOM
+                </span>
+              </div>
+            </button>
+
+            {/* CREATE ROOM button */}
+            <button
+              onClick={createRoom}
+              className="flex items-center justify-center border-none transition-transform hover:scale-[1.03] active:scale-[0.97]"
+              style={{
+                width: '16.5rem',
+                height: '3.94rem',
+                borderRadius: '0.8rem',
+                backgroundColor: '#2C3E60',
+                padding: '0.2rem',
+                marginTop: '6vh',
+              }}
+            >
+              <div
+                className="flex items-center justify-center w-full h-full"
+                style={{
+                  borderRadius: '0.60rem',
+                  background: 'linear-gradient(90deg, #FFF93F 0%, #DFC149 100%)',
+                  border: '0.31rem solid white',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '1.75rem',
+                    fontWeight: 900,
+                    color: 'white',
+                    WebkitTextStroke: '0.40rem #9C8A25',
+                    paintOrder: 'stroke fill',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  CREATE ROOM
+                </span>
+              </div>
+            </button>
           </div>
         </div>
       </div>

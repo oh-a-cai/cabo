@@ -10,6 +10,9 @@ html, body, #root {
   html {
     font-size: clamp(12px, 1.2vw, 28px);
   }
+  button {
+    font-family: inherit;
+  }
 }
 
 @font-face {
