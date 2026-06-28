@@ -140,50 +140,56 @@ export default function MainMenu() {
             style={{
               width: '30rem',
               height: '5rem',
-              borderRadius: '1rem',
-              border: '0.3rem solid #623F5D',
-              backgroundColor: '#FFFFFF',
+              borderRadius: '1.2rem',
+              backgroundColor: '#623F5D',
+              padding: '0.3rem'
             }}
           >
             <div
-              className="absolute"
-              style={{ inset: '0.4rem', backgroundColor: '#D4C7D2', borderRadius: '0.5rem' }}
-            />
-            <input
-              className="relative z-10 flex-1 bg-transparent outline-none font-black text-[#4B4665] placeholder-[#FFFFFF]/60"
+              className="flex items-center w-full h-full overflow-hidden"
               style={{
-                fontSize: '2.2rem',
-                border: 'none',
-                marginLeft: '1.2rem',
-              }}
-              placeholder="enter nickname"
-              value={name}
-              onChange={(e) => { setName(e.target.value); setNameSet(false); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && name) setNameSet(true); }}
-            />
-            {/* Triangle enter button */}
-            <button
-              onClick={() => setNameSet(true)}
-              disabled={!name}
-              className="relative flex items-center justify-center right-4 transition-transform hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-              style={{
-                width: '3.5rem',
-                height: '3.5rem',
-                backgroundColor: '#F5ED96',
-                borderRadius: '0.5rem',
-                border: '0.2rem solid #4A4511',
+                borderRadius: '1rem',
+                backgroundColor: '#D4C7D2',
+                border: '0.35rem solid #FFFFFF',
+                boxSizing: 'border-box',
+                padding: '0.3rem',
               }}
             >
-              <svg className="relative z-10" width="2.3rem" height="2.3rem" viewBox="0 0 70 87" fill="none">
-                <path
-                  d="M68.1328 34.4821C74.7401 38.3423 74.7401 47.8914 68.1328 51.7516L20.0449 79.8453C13.3784 83.7401 5 78.9314 5 71.2106V15.0231C5 7.30222 13.3784 2.49355 20.0449 6.38831L68.1328 34.4821Z"
-                  fill="#FFFDEA"
-                  stroke="#6D5C24"
-                  strokeWidth={10}
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+              <input
+                className="flex-1 bg-transparent outline-none border-none font-black text-[#4B4665] placeholder-[#FFFFFF]/60"
+                style={{
+                  fontSize: '2.2rem',
+                  marginLeft: '1.2rem',
+                  minWidth: 0
+                }}
+                placeholder="enter nickname"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setNameSet(false); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && name) setNameSet(true); }}
+              />
+              <button
+                onClick={() => setNameSet(true)}
+                disabled={!name}
+                className="flex items-center justify-center flex-shrink-0 transition-transform hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  width: '3.5rem',
+                  height: '3.5rem',
+                  backgroundColor: '#F5ED96',
+                  borderRadius: '0.5rem',
+                  border: '0.2rem solid #4A4511',
+                }}
+              >
+                <svg width="2.3rem" height="2.3rem" viewBox="0 0 70 87" fill="none">
+                  <path
+                    d="M68.1328 34.4821C74.7401 38.3423 74.7401 47.8914 68.1328 51.7516L20.0449 79.8453C13.3784 83.7401 5 78.9314 5 71.2106V15.0231C5 7.30222 13.3784 2.49355 20.0449 6.38831L68.1328 34.4821Z"
+                    fill="#FFFDEA"
+                    stroke="#6D5C24"
+                    strokeWidth={10}
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 

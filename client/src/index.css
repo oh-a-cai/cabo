@@ -7,8 +7,12 @@ html, body, #root {
 }
 
 @layer base {
+  *, ::before, ::after {
+    box-sizing: content-box;
+  }
   html {
     font-size: clamp(12px, 1.2vw, 28px);
+    line-height: normal;
   }
   button {
     font-family: inherit;
