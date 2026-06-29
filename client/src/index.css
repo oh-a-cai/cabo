@@ -11,7 +11,7 @@ html, body, #root {
     box-sizing: content-box;
   }
   html {
-    font-size: clamp(12px, 1.2vw, 28px);
+    font-size: clamp(20px, 1.3vw, 40px);
     line-height: normal;
   }
   button {
