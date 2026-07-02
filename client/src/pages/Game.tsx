@@ -52,10 +52,9 @@ export default function Game() {
 
   useEffect(() => {
     if (!gameState?.countdownStartedAt) return;
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - gameState.countdownStartedAt!) / 1000);
-      setCountdown(Math.max(5 - elapsed, 0));
-    }, 500);
+    const calc = () => Math.max(5 - Math.floor((Date.now() - gameState.countdownStartedAt!) / 1000), 0);
+    setCountdown(calc());
+    const interval = setInterval(() => setCountdown(calc()), 500);
     return () => clearInterval(interval);
   }, [gameState?.countdownStartedAt]);
 
@@ -177,20 +176,6 @@ export default function Game() {
 
   // --- Phase renders ---
 
-  if (gameState.gamePhase === "setup") {
-    return (
-      <SetupPhase
-        me={me!}
-        players={gameState.players}
-        countdown={countdown}
-        readyCount={gameState.players.filter(p => p.ready).length}
-        totalPlayers={gameState.players.length}
-        isReady={me?.ready === true}
-        onReady={handleReady}
-      />
-    );
-  }
-
   if (gameState.gamePhase === "finished") {
     return (
       <FinishedPhase
@@ -204,7 +189,25 @@ export default function Game() {
   const topDiscardCard = gameState.discardPile.at(-1);
 
   return (
-    <div>
+    <div 
+      className="relative min-w-screen min-h-screen overflow-hidden" 
+      style={{ fontFamily: "'Noto Sans Lao SemiCondensed', sans-serif" }}
+    >
+      <div className="bg-[url('./assets/game_bg.png')] bg-cover bg-center absolute inset-0" />
+
+      {gameState.gamePhase === "setup" && me && (
+        <SetupPhase
+          me={me}
+          players={gameState.players}
+          countdown={countdown}
+          readyCount={gameState.players.filter(p => p.ready).length}
+          totalPlayers={gameState.players.length}
+          isReady={me.ready === true}
+          onReady={handleReady}
+        />
+      )}
+
+      <div className="relative">
       <h1>Room: {roomId}</h1>
       <h2>Game Phase: {gameState.gamePhase}</h2>
 
@@ -304,6 +307,7 @@ export default function Game() {
             onConfirm={() => giveCardToPlayer(matchGiveCard!)}
           />
         )}
+      </div>
       </div>
     </div>
   );

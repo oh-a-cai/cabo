@@ -19,6 +19,13 @@ html, body, #root {
   }
 }
 
+@keyframes countdown-tick {
+  0%   { opacity: 0; transform: scale(1.4); }
+  15%  { opacity: 1; transform: scale(1); }
+  75%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.7); }
+}
+
 @font-face {
   font-family: 'Noto Sans Lao SemiCondensed';
   src: url('./assets/NotoSansLao_SemiCondensed-Black.ttf') format('truetype');

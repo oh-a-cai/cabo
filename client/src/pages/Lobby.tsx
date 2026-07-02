@@ -170,7 +170,7 @@ export default function Lobby() {
                     <span style={{
                       fontSize: '1.5rem', fontWeight: 900,
                       color: player ? '#1E2B68' : '#5060A0',
-                      opacity: player ? 1 : 0.5,
+                      opacity: player ? 1 : 0.6,
                     }}>
                       {player ? player.name : '...empty...'}
                     </span>
@@ -258,7 +258,7 @@ export default function Lobby() {
               <button
                 onClick={startGame}
                 className="flex items-center justify-center border-none transition-transform hover:scale-[1.03] active:scale-[0.97]"
-                style={{ width: '60%', height: '3.94rem', alignSelf: 'center' }}
+                style={{ width: '60%', height: '3.94rem', alignSelf: 'center', marginBottom: '1rem' }}
               >
                 <div
                   className="flex items-center justify-center w-full h-full"
@@ -279,7 +279,7 @@ export default function Lobby() {
               </button>
             ) : (
               <div style={{
-                width: '60%', height: '3.94rem', alignSelf: 'center',
+                width: '60%', height: '3.94rem', alignSelf: 'center', marginBottom: '1rem',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 textAlign: 'center', fontSize: '1.5rem', fontWeight: 900,
                 color: '#BE2B2B', letterSpacing: '0.02em', whiteSpace: 'nowrap',
