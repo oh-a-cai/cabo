@@ -163,6 +163,7 @@ export default function MainMenu() {
                   minWidth: 0
                 }}
                 placeholder="enter nickname"
+                autoFocus
                 value={name}
                 onChange={(e) => { setName(e.target.value); setNameSet(false); }}
                 onKeyDown={(e) => { if (e.key === 'Enter' && name) setNameSet(true); }}

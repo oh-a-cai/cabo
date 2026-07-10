@@ -19,7 +19,15 @@ function filterGameStateForPlayer(game: GameState, playerId: string): GameState 
           card.peekerId === playerId;
         return isVisible ? card : { ...card, rank: "hidden" as any, suit: "hidden" as any, value: 0 };
       }),
-      drawnCard: player.id === playerId ? player.drawnCard : undefined,
+      drawnCard: (() => {
+        const card = player.drawnCard;
+        if (!card) return undefined;
+        const isVisible =
+          card.visibility === "all" ||
+          (card.visibility === "owner" && player.id === playerId) ||
+          card.peekerId === playerId;
+        return isVisible ? card : { ...card, rank: "hidden" as any, suit: "hidden" as any, value: 0 };
+      })(),
     })),
   };
 }
@@ -78,9 +86,20 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       if(!game){ // room doesn't exist
         return callback?.({ error: `Room Id ${roomId} does not exist.` });
       }
+
+      const isExistingPlayer = game.players.find(p => p.id === socket.id);
+      if (!isExistingPlayer) {
+        if (game.gamePhase !== "waiting") {
+          return callback?.({ error: `Room Id ${roomId} already has a game in progress.` });
+        }
+        if (game.players.length >= 6) {
+          return callback?.({ error: `Room Id ${roomId} is full.` });
+        }
+      }
+
       socket.join(roomId);
-      
-      if (!game.players.find(p => p.id === socket.id)) { // handles duplicate players
+
+      if (!isExistingPlayer) { // handles duplicate players
         const player: Player = {
           id: socket.id,
           name: playerName,
@@ -92,7 +111,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         };
         game.players.push(player);
       }
-  
+
       io.to(roomId).emit("roomUpdate", game);
       callback?.({ success: true });
     });
@@ -146,7 +165,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
           game.gamePhase = "playing";
           game.countdownStartedAt = undefined;
           emitGameState(io, game);
-        }, 5000);
+        }, 3000);
       }
 
       callback?.({ success: true });
