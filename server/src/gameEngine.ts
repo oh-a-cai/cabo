@@ -62,6 +62,7 @@ export function startGame(game: GameState) {
   game.pendingCardPower = undefined;
   game.matchReceiverId = undefined;
   game.matchReceiverIndex = undefined;
+  game.matcherId = undefined;
   game.isCardMatched = false;
   game.isCaboCalled = false;
   game.caboCaller = undefined;
@@ -411,7 +412,7 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
   const isSelfMatch = targetPlayer.id === playerId;
 
   if (!isMatch) {
-    if (game.deck.length > 0 && !player.hasBurned) {
+    if (game.deck.length > 0 && !player.hasBurned && player.hand.length < 8) {
       const drawnCard = game.deck.pop()!;
       drawnCard.visibility = "hidden";
       const nullSlot = player.hand.findIndex(c => c === null);
@@ -440,6 +441,7 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
   else {
     game.matchReceiverId = targetPlayer.id;
     game.matchReceiverIndex = index;
+    game.matcherId = playerId;
   }
 
   return { success: true };
@@ -448,6 +450,9 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
 export function giveCardToPlayer(game: GameState, playerId: string, myCardId: string): SocketResponse {
   if (!game.matchReceiverId) {
     return { error: "No active match to give a card" };
+  }
+  if (game.matcherId !== playerId) {
+    return { error: "Only the player who matched the card can give one" };
   }
 
   const player = game.players.find(p => p.id === playerId);
@@ -466,6 +471,7 @@ export function giveCardToPlayer(game: GameState, playerId: string, myCardId: st
   targetPlayer.hand[game.matchReceiverIndex!] = givenCard;
   game.matchReceiverId = undefined;
   game.matchReceiverIndex = undefined;
+  game.matcherId = undefined;
 
   if (player.hand.every(c => c === null) || targetPlayer.hand.every(c => c === null)) {
     endGame(game);

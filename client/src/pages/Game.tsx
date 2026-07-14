@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useLayoutEffect, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { DragEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../clientSocket/socket";
 import type { GameState, SocketResponse } from "../../../shared/types";
@@ -21,8 +22,11 @@ const OPP_SLOTS = [
   { x: 648.41, y: 350.17 }, // top-left
 ] as const;
 
-// rotation (deg) making each hand perpendicular to its hexagon edge, matching OPP_SLOTS order
-const OPP_ROTATIONS = [0, 60, 120, -120, -60] as const;
+// rotation (deg) making each hand perpendicular to its hexagon edge, matching OPP_SLOTS order.
+// Each is the "perpendicular" angle plus 180°: this flips which side of the (unmirrored, same
+// col*2+row indexing as "me") 2×2 grid ends up facing outward toward the player, so the owner-known
+// cards (hand[1]/hand[3]) land on the correct side without needing any row/col index remapping.
+const OPP_ROTATIONS = [-180, -120, -60, -300, -240] as const;
 
 // name tag position for each seat (300×45 tags) — centered on the same seat-radial anchor, left/right mirrored with equal gap
 const OPP_NAME_POS = [
@@ -58,6 +62,8 @@ export default function Game() {
   const [isMatching, setIsMatching] = useState(false);
   const [matchReceiverId, setMatchReceiverId] = useState<string | null>(null);
   const [matchGiveCard, setMatchGiveCard] = useState<string | null>(null);
+  const [isDragOverDiscard, setIsDragOverDiscard] = useState(false);
+  const discardDragCounter = useRef(0); // dragenter/dragleave bubble from child elements, so count nesting depth instead of using a plain boolean
 
   useLayoutEffect(() => {
     const upd = () => setScale(Math.min(window.innerWidth / 1600, window.innerHeight / 900));
@@ -76,7 +82,7 @@ export default function Game() {
       setGameState(game);
       setPendingCardPower(game.pendingCardPower || null);
       if (!game.countdownStartedAt) setCountdown(null);
-      if (game.matchReceiverId && game.matchReceiverId !== socket.id) {
+      if (game.matchReceiverId && game.matcherId === socket.id) {
         setIsMatching(true);
         setMatchReceiverId(game.matchReceiverId);
       } else {
@@ -178,12 +184,8 @@ export default function Game() {
 
   const handleMatchCard = (cardId: string) => {
     socket.emit("matchCard", roomId, cardId, (res: SocketResponse) => {
-      if ("error" in res) { alert(res.error); return; }
-      const receiverId = gameState?.matchReceiverId;
-      if (receiverId && receiverId !== socket.id) {
-        setIsMatching(true);
-        setMatchReceiverId(receiverId);
-      }
+      if ("error" in res) alert(res.error);
+      // isMatching/matchReceiverId are set from the "gameState" broadcast that follows
     });
   };
 
@@ -204,11 +206,39 @@ export default function Game() {
     }
     if (canAct && me.drawnCard) {
       handleSwap(cardId);
-    } else if (gameState.turnPhase === "drawing" || gameState.turnPhase === "power") {
-      handleMatchCard(cardId);
     } else {
       alert("You cannot act on this card right now.");
     }
+  };
+
+  // Matching is drag-and-drop only (drop a card onto the discard pile), allowed at any time — even
+  // mid-power-selection or while holding a drawn card — so it's no longer gated by turn phase
+  const canMatch = true;
+  const handleCardDragStart = (e: DragEvent<HTMLImageElement>, cardId: string) => {
+    e.dataTransfer.setData("text/plain", cardId);
+  };
+  const handleDiscardDragEnter = () => {
+    discardDragCounter.current++;
+    setIsDragOverDiscard(true);
+  };
+  const handleDiscardDragLeave = () => {
+    discardDragCounter.current--;
+    if (discardDragCounter.current <= 0) {
+      discardDragCounter.current = 0;
+      setIsDragOverDiscard(false);
+    }
+  };
+  const handleDiscardDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    discardDragCounter.current = 0;
+    setIsDragOverDiscard(false);
+    const cardId = e.dataTransfer.getData("text/plain");
+    if (!cardId) return;
+    if (isMatching) {
+      alert("You must give a card to complete the previous match first.");
+      return;
+    }
+    handleMatchCard(cardId);
   };
 
   const handleCallCabo = () => {
@@ -225,8 +255,19 @@ export default function Game() {
   const topDeckCard = gameState.deck.at(-1);
   const topDiscardCard = gameState.discardPile.at(-1);
   const currentPlayer = gameState.players[gameState.turnId];
-  const turnText = isMyTurn
-    ? (canDraw ? 'Your turn — draw a card' : canAct ? 'Your turn — swap or discard' : 'Using card power...')
+  const POWER_TEXT = {
+    peekSelf: 'Peeking at your own card...',
+    peekOther: "Peeking at an opponent's card...",
+    swap: 'Swapping two cards...',
+  } as const;
+  const matchReceiver = gameState.players.find(p => p.id === matchReceiverId);
+  const turnText = isMatching && matchReceiverId && me
+    ? `Give a card to ${matchReceiver?.name ?? '?'}`
+    : isMyTurn
+    ? (canDraw ? 'Your turn — draw a card'
+      : canAct ? 'Your turn — swap or discard'
+      : gameState.pendingCardPower ? POWER_TEXT[gameState.pendingCardPower.type]
+      : 'Using card power...')
     : `${currentPlayer?.name ?? '?'}'s turn`;
 
   // My card grid constants (33.73×47.20 cards, scaled gap → grid)
@@ -331,8 +372,19 @@ export default function Game() {
           </div>
         </div>
 
-        {/* Discard pile (right of hex center) */}
-        <div style={{ position: 'absolute', top: 395.10, left: 800 + 14.26 }}>
+        {/* Discard pile (right of hex center) — drop zone for matching */}
+        <div
+          style={{
+            position: 'absolute', top: 395.10, left: 800 + 14.26,
+            borderRadius: 8,
+            filter: isDragOverDiscard ? 'drop-shadow(0 0 10px rgba(245,210,80,0.95)) drop-shadow(0 0 4px rgba(245,210,80,0.95))' : undefined,
+            transition: 'filter 0.15s ease',
+          }}
+          onDragOver={canMatch ? (e) => e.preventDefault() : undefined}
+          onDragEnter={canMatch ? handleDiscardDragEnter : undefined}
+          onDragLeave={canMatch ? handleDiscardDragLeave : undefined}
+          onDrop={canMatch ? handleDiscardDrop : undefined}
+        >
           {topDiscardCard ? (
             <CardImage
               card={topDiscardCard}
@@ -365,8 +417,9 @@ export default function Game() {
               {/* Drawn card indicator — rendered first so it sits behind this opponent's hand and name tag,
                   shifted to the tag's edge nearest the table and tilted inward for rotated seats */}
               {namePos && player.drawnCard && (() => {
-                const shiftX = rotation === 0 ? 0 : (slot.x < 800 ? 100 : -100);
-                const tilt = rotation === 0 ? 0 : rotation / 36;
+                const isTopSeat = slotIdx === 0;
+                const shiftX = isTopSeat ? 0 : (slot.x < 800 ? 100 : -100);
+                const tilt = isTopSeat ? 0 : rotation / 36;
                 return (
                   <div style={{
                     position: 'absolute',
@@ -378,13 +431,24 @@ export default function Game() {
                   </div>
                 );
               })()}
-              <div style={{ position: 'absolute', left: slot.x - gW / 2, top: slot.y - gH / 2, transform: `rotate(${rotation}deg)` }}>
+              {/* transformOrigin is pinned to the original 2×2 box center (not the default 50% 50%, which
+                  would recompute against the wider box once burn-overflow columns 2-3 render, swinging the
+                  original 4 cards around a shifted pivot) so the base hand position never moves. */}
+              <div style={{ position: 'absolute', left: slot.x - gW / 2, top: slot.y - gH / 2, transform: `rotate(${rotation}deg)`, transformOrigin: `${gW / 2}px ${gH / 2}px` }}>
                 <div style={{ display: 'flex', gap: GAP }}>
-                  {[0, 1].map(col => (
+                  {[0, 1, 2, 3].map(col => (
                     <div key={col} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
                       {[0, 1].map(row => {
-                        const card = player.hand[col * 2 + row];
-                        return card ? (
+                        // Same col*2+row order as "me" — OPP_ROTATIONS already accounts for which side of the
+                        // grid faces the player, so no row/col remapping is needed here.
+                        // Cols 2-3 are burn-card overflow (indexes 4-7, capped at 8 total): same order,
+                        // offset by 4, but with no empty-slot placeholder since those slots don't always exist.
+                        const idx = col < 2 ? col * 2 + row : 4 + (col - 2) * 2 + row;
+                        const card = player.hand[idx];
+                        if (!card) {
+                          return col < 2 ? <div key={row} style={{ width: CW, height: CH }} /> : null;
+                        }
+                        return (
                           <CardImage
                             key={card.id}
                             card={card}
@@ -396,10 +460,10 @@ export default function Game() {
                                 handleCardClick(card.id);
                               }
                             }}
+                            draggable={canMatch}
+                            onDragStart={(e) => handleCardDragStart(e, card.id)}
                             className={`w-[33.73px] h-[47.20px] transition-transform duration-150 cursor-pointer hover:scale-110 ${selectedTargetCard === card.id ? 'ring-2 ring-purple-400' : ''}`}
                           />
-                        ) : (
-                          <div key={`${col}-${row}`} style={{ width: CW, height: CH }} />
                         );
                       })}
                     </div>
@@ -445,26 +509,34 @@ export default function Game() {
           <>
             {/* 2×2 card grid */}
             <div style={{ position: 'absolute', left: MY_GX, top: MY_GY, display: 'flex', gap: MY_GAP }}>
-              {[0, 1].map(col => (
+              {[0, 1, 2, 3].map(col => (
                 <div key={col} style={{ display: 'flex', flexDirection: 'column', gap: MY_GAP }}>
                   {[0, 1].map(row => {
-                    const card = me.hand[col * 2 + row];
-                    return card ? (
+                    // Cols 2-3 are burn-card overflow (indexes 4-7, capped at 8 total): same order as
+                    // cols 0-1, offset by 4, with no empty-slot placeholder since those slots don't always exist.
+                    const idx = col < 2 ? col * 2 + row : 4 + (col - 2) * 2 + row;
+                    const card = me.hand[idx];
+                    if (!card) {
+                      return col < 2 ? <div key={row} style={{ width: MY_CW, height: MY_CH }} /> : null;
+                    }
+                    return (
                       <CardImage
                         key={card.id}
                         card={card}
                         ownerId={me.id}
                         onClick={() => {
-                          if (pendingCardPower && pendingCardPower.playerId === socket.id) {
+                          if (isMatching) {
+                            setMatchGiveCard(card.id);
+                          } else if (pendingCardPower && pendingCardPower.playerId === socket.id) {
                             if (pendingCardPower.type !== "peekOther" && !pendingCardPower.myCardId) setSelectedCard(card.id);
                           } else {
                             handleCardClick(card.id);
                           }
                         }}
-                        className={`w-[33.73px] h-[47.20px] shadow-md transition-transform duration-150 cursor-pointer hover:scale-110 hover:shadow-xl ${selectedCard === card.id ? 'ring-2 ring-yellow-400' : ''}`}
+                        draggable={canMatch && !isMatching}
+                        onDragStart={(e) => handleCardDragStart(e, card.id)}
+                        className={`w-[33.73px] h-[47.20px] shadow-md transition-transform duration-150 cursor-pointer hover:scale-110 hover:shadow-xl ${selectedCard === card.id ? 'ring-2 ring-yellow-400' : ''} ${matchGiveCard === card.id ? 'ring-2 ring-green-400' : ''}`}
                       />
-                    ) : (
-                      <div key={`${col}-${row}`} style={{ width: MY_CW, height: MY_CH }} />
                     );
                   })}
                 </div>
@@ -479,6 +551,7 @@ export default function Game() {
                     card={me.drawnCard}
                     ownerId={me.id}
                     onClick={handleDiscard}
+                    draggable={false}
                     className="w-[105.64px] h-[148.04px] cursor-pointer hover:scale-110 transition-transform duration-150"
                   />
                 </div>
@@ -513,8 +586,10 @@ export default function Game() {
           </>
         )}
 
-        {/* Room label — top left */}
-        <div style={{ position: 'absolute', top: 30, left: -50 }}>
+        {/* Room label — top left. Kept flush with the canvas edge (not bled past it) since at exact-16:9
+            viewports (1920×1080, 2560×1440) the scaled canvas fills the screen with zero letterboxing
+            margin, so anything positioned outside 0-1600 gets clipped by the outer overflow-hidden wrapper. */}
+        <div style={{ position: 'absolute', top: 30, left: 30 }}>
           <div style={{
             color: 'white', fontWeight: 900, fontSize: 35,
             WebkitTextStroke: '0.25em #2A2840', paintOrder: 'stroke fill',
@@ -525,15 +600,17 @@ export default function Game() {
           <div style={{ width: 200, height: 6, marginLeft: -5, marginTop: -6, background: 'white', border: '0.15em solid #2A2840', borderRadius: 4 }} />
         </div>
 
-        {/* Turn status — top center */}
+        {/* Turn status — inside the hex table, above the deck/discard pile. pointerEvents:none since this
+            spans the full table width and would otherwise block clicks on opponent hand cards behind it */}
         <div style={{
-          position: 'absolute', top: 24, left: 0, right: 0, textAlign: 'center',
+          position: 'absolute', top: 340, left: 0, right: 0, textAlign: 'center',
           color: isMyTurn ? '#F5D060' : '#B0A0E8',
           fontWeight: 900, fontSize: 16,
           letterSpacing: '0.03em',
           textShadow: isMyTurn
             ? '0 0 14px rgba(245,200,50,0.7)'
             : '0 0 12px rgba(152,128,224,0.6)',
+          pointerEvents: 'none',
         }}>
           {turnText}
         </div>
@@ -541,12 +618,13 @@ export default function Game() {
         {/* Cabo called banner — below turn status */}
         {gameState.isCaboCalled && (
           <div style={{
-            position: 'absolute', top: 52, left: 0, right: 0, textAlign: 'center',
-            color: '#E85050', fontWeight: 900, fontSize: 14,
+            position: 'absolute', top: 365, left: 0, right: 0, textAlign: 'center',
+            color: 'rgb(242, 120, 82)', fontWeight: 900, fontSize: 14,
             letterSpacing: '0.04em',
-            textShadow: '0 0 10px rgba(232,80,80,0.6)',
+            textShadow: '0 0 10px rgba(232, 116, 80, 0.6)',
+            pointerEvents: 'none',
           }}>
-            CABO called by {gameState.caboCaller?.name}! {(gameState.remainingTurns ?? 0) + 1} turns remaining
+            {gameState.caboCaller?.name} called CABO!
           </div>
         )}
 
@@ -555,7 +633,7 @@ export default function Game() {
           onClick={handleCallCabo}
           disabled={!canDraw || gameState.isCaboCalled}
           className="flex items-center justify-center border-none transition-transform hover:scale-[1.04] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ position: 'absolute', borderRadius: 10, border: '3px solid white', left: -60, top: 830, width: 150, height: 40 }}
+          style={{ position: 'absolute', borderRadius: 10, border: '3px solid white', left: 30, top: 830, width: 150, height: 40 }}
         >
           <div style={{
             width: '100%', 
@@ -580,7 +658,7 @@ export default function Game() {
         <button
           onClick={() => navigate('/')}
           className="flex items-center justify-center border-none transition-all duration-200 hover:scale-[1.04] active:scale-[0.97]"
-          style={{ position: 'absolute', borderRadius: 10, border: '3px solid white', right: -60, top: 830, width: 170, height: 40 }}
+          style={{ position: 'absolute', borderRadius: 10, border: '3px solid white', right: 30, top: 830, width: 170, height: 40 }}
         >
           <div style={{
             width: '100%', 
@@ -621,29 +699,19 @@ export default function Game() {
           </div>
         )}
 
-        {/* Match panel overlay */}
+        {/* Give-a-card controls — below my name tag, no overlay. Card selection happens by clicking my
+            own hand cards directly (see matchGiveCard highlight above); only the matcher sees this. */}
         {isMatching && matchReceiverId && me && (
           <div style={{
-            position: 'absolute', inset: 0,
-            background: 'rgba(8,6,20,0.75)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'absolute',
+            left: 0, right: 0, top: 846,
+            display: 'flex', justifyContent: 'center',
             zIndex: 50,
           }}>
-            <div style={{
-              background: '#1C1A2E',
-              border: '2px solid #9880E0',
-              borderRadius: 16,
-              padding: '20px 28px',
-              minWidth: 320,
-            }}>
-              <MatchPanel
-                matchReceiverId={matchReceiverId}
-                me={me}
-                matchGiveCard={matchGiveCard}
-                onSelectCard={setMatchGiveCard}
-                onConfirm={() => giveCardToPlayer(matchGiveCard!)}
-              />
-            </div>
+            <MatchPanel
+              matchGiveCard={matchGiveCard}
+              onConfirm={() => giveCardToPlayer(matchGiveCard!)}
+            />
           </div>
         )}
       </div>

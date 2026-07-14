@@ -89,7 +89,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
 
       const isExistingPlayer = game.players.find(p => p.id === socket.id);
       if (!isExistingPlayer) {
-        if (game.gamePhase !== "waiting") {
+        if (game.gamePhase !== "waiting" && game.gamePhase !== "finished") {
           return callback?.({ error: `Room Id ${roomId} already has a game in progress.` });
         }
         if (game.players.length >= 6) {

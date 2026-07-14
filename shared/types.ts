@@ -49,6 +49,7 @@ export interface GameState{
     pendingCardPower?: PendingCardPower;
     matchReceiverId?: string;
     matchReceiverIndex?: number;
+    matcherId?: string;
     isCardMatched: boolean;
     isCaboCalled: boolean;
     caboCaller?: Player;
