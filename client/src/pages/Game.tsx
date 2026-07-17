@@ -8,8 +8,8 @@ import SetupPhase from "../components/SetupPhase";
 import FinishedPhase from "../components/FinishedPhase";
 import CardPowerPanel from "../components/CardPowerPanel";
 import MatchPanel from "../components/MatchPanel";
-import tableExterior from "../assets/table_exterior.png";
-import tableInterior from "../assets/table_interior.png";
+import tableExterior from "../assets/table_exterior.webp";
+import tableInterior from "../assets/table_interior.webp";
 
 const HEX_CLIP = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
 
@@ -301,7 +301,7 @@ export default function Game() {
       className="w-screen h-screen overflow-hidden relative"
       style={{ fontFamily: "'Noto Sans Lao SemiCondensed', sans-serif" }}
     >
-      <div className="bg-[url('./assets/game_bg.png')] bg-cover bg-center absolute inset-0" />
+      <div className="bg-[url('./assets/game_bg.webp')] bg-cover bg-center absolute inset-0" />
 
       {/* Setup overlay — rendered at viewport level so position:fixed works correctly */}
       {gameState.gamePhase === 'setup' && me && (

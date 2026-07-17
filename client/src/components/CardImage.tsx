@@ -18,7 +18,7 @@ export default function CardImage({ card, ownerId, onClick, className = "", drag
     (card.visibility === "owner" && isMe) ||
     card.peekerId === socket.id;
 
-  const src = isVisible ? `/assets/Deck_of_cards/${card.id}.png` : "/assets/Deck_of_cards/back.png";
+  const src = isVisible ? `/assets/Deck_of_cards/${card.id}.webp` : "/assets/Deck_of_cards/back.webp";
   const alt = isVisible ? card.id : "back of card";
 
   return <img src={src} alt={alt} onClick={onClick} className={className} draggable={draggable} onDragStart={onDragStart} />;

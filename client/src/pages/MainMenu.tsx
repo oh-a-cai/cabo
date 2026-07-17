@@ -39,7 +39,7 @@ export default function MainMenu() {
       style={{ fontFamily: "'Noto Sans Lao SemiCondensed', sans-serif" }}
     >
       {/* Shared background */}
-      <div className="bg-[url('./assets/main_menu_bg.png')] bg-cover bg-center absolute inset-0" />
+      <div className="bg-[url('./assets/main_menu_bg.webp')] bg-cover bg-center absolute inset-0" />
 
       {/* Transition between both panels */}
       <div
