@@ -14,7 +14,7 @@ interface CardPowerPanelProps {
 const THEME = {
   green: { gradient: 'linear-gradient(270deg, #86D96C 25%, #70BE4C 75%, #479A6D 125%)', dark: '#3B872C' },
   yellow: { gradient: 'linear-gradient(270deg, #FFF6AF 25%, #FFE397 50%, #EEAE00 125%)', dark: '#BF8849' },
-  gray: { gradient: 'linear-gradient(270deg, #D8D8D8 0%, #A8A8A8 50%, #808080 100%)', dark: '#4A4A4A' },
+  gray: { gradient: 'linear-gradient(270deg,rgb(81, 85, 70) 0%,rgb(62, 59, 52) 100%)', dark: '#4A4A4A' },
 } as const;
 
 function PowerButton({ children, onClick, disabled, variant }: {

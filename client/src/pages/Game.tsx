@@ -111,7 +111,9 @@ export default function Game() {
   const others = myIndex === -1
     ? gameState.players.filter(p => p.id !== socket.id)
     : Array.from({ length: gameState.players.length - 1 }, (_, k) => gameState.players[(myIndex + 1 + k) % gameState.players.length]);
-  const isMyTurn = gameState.players[gameState.turnId]?.id === me?.id;
+  // Once the game ends (results dropdown showing), all card interaction is frozen
+  const cardsDisabled = gameState.gamePhase === "finished";
+  const isMyTurn = !cardsDisabled && gameState.players[gameState.turnId]?.id === me?.id;
   const canDraw = isMyTurn && gameState.turnPhase === "drawing";
   const canAct = isMyTurn && gameState.turnPhase === "action";
 
@@ -213,7 +215,8 @@ export default function Game() {
 
   // Matching is drag-and-drop only (drop a card onto the discard pile), allowed at any time — even
   // mid-power-selection or while holding a drawn card — so it's no longer gated by turn phase
-  const canMatch = true;
+  // (except once the game has ended, when it's disabled like everything else card-related)
+  const canMatch = !cardsDisabled;
   const handleCardDragStart = (e: DragEvent<HTMLImageElement>, cardId: string) => {
     e.dataTransfer.setData("text/plain", cardId);
   };
@@ -247,10 +250,6 @@ export default function Game() {
     });
   };
 
-  if (gameState.gamePhase === "finished") {
-    return <FinishedPhase gameState={gameState} onBackToLobby={() => navigate(`/room/${roomId}`)} />;
-  }
-
   // --- Derived values ---
   const topDeckCard = gameState.deck.at(-1);
   const topDiscardCard = gameState.discardPile.at(-1);
@@ -261,7 +260,9 @@ export default function Game() {
     swap: 'Swapping two cards...',
   } as const;
   const matchReceiver = gameState.players.find(p => p.id === matchReceiverId);
-  const turnText = isMatching && matchReceiverId && me
+  const turnText = cardsDisabled
+    ? 'Game over'
+    : isMatching && matchReceiverId && me
     ? `Give a card to ${matchReceiver?.name ?? '?'}`
     : isMyTurn
     ? (canDraw ? 'Your turn — draw a card'
@@ -302,6 +303,11 @@ export default function Game() {
       style={{ fontFamily: "'Noto Sans Lao SemiCondensed', sans-serif" }}
     >
       <div className="bg-[url('./assets/game_bg.webp')] bg-cover bg-center absolute inset-0" />
+
+      {/* Finished overlay — rendered at viewport level so position:fixed works correctly */}
+      {gameState.gamePhase === 'finished' && (
+        <FinishedPhase gameState={gameState} />
+      )}
 
       {/* Setup overlay — rendered at viewport level so position:fixed works correctly */}
       {gameState.gamePhase === 'setup' && me && (
@@ -453,7 +459,7 @@ export default function Game() {
                             key={card.id}
                             card={card}
                             ownerId={player.id}
-                            onClick={() => {
+                            onClick={cardsDisabled ? undefined : () => {
                               if (pendingCardPower && pendingCardPower.playerId === socket.id) {
                                 if (pendingCardPower.type !== "peekSelf" && !pendingCardPower.targetCardId) setSelectedTargetCard(card.id);
                               } else {
@@ -461,8 +467,8 @@ export default function Game() {
                               }
                             }}
                             draggable={canMatch}
-                            onDragStart={(e) => handleCardDragStart(e, card.id)}
-                            className={`w-[33.73px] h-[47.20px] transition-transform duration-150 cursor-pointer hover:scale-110 ${selectedTargetCard === card.id ? 'ring-2 ring-purple-400' : ''}`}
+                            onDragStart={cardsDisabled ? undefined : (e) => handleCardDragStart(e, card.id)}
+                            className={`w-[33.73px] h-[47.20px] transition-transform duration-150 ${cardsDisabled ? '' : 'cursor-pointer hover:scale-110'} ${selectedTargetCard === card.id ? 'ring-2 ring-purple-400' : ''}`}
                           />
                         );
                       })}
@@ -524,7 +530,7 @@ export default function Game() {
                         key={card.id}
                         card={card}
                         ownerId={me.id}
-                        onClick={() => {
+                        onClick={cardsDisabled ? undefined : () => {
                           if (isMatching) {
                             setMatchGiveCard(card.id);
                           } else if (pendingCardPower && pendingCardPower.playerId === socket.id) {
@@ -534,8 +540,8 @@ export default function Game() {
                           }
                         }}
                         draggable={canMatch && !isMatching}
-                        onDragStart={(e) => handleCardDragStart(e, card.id)}
-                        className={`w-[33.73px] h-[47.20px] shadow-md transition-transform duration-150 cursor-pointer hover:scale-110 hover:shadow-xl ${selectedCard === card.id ? 'ring-2 ring-yellow-400' : ''} ${matchGiveCard === card.id ? 'ring-2 ring-green-400' : ''}`}
+                        onDragStart={cardsDisabled ? undefined : (e) => handleCardDragStart(e, card.id)}
+                        className={`w-[33.73px] h-[47.20px] shadow-md transition-transform duration-150 ${cardsDisabled ? '' : 'cursor-pointer hover:scale-110 hover:shadow-xl'} ${selectedCard === card.id ? 'ring-2 ring-yellow-400' : ''} ${matchGiveCard === card.id ? 'ring-2 ring-green-400' : ''}`}
                       />
                     );
                   })}
@@ -550,9 +556,9 @@ export default function Game() {
                   <CardImage
                     card={me.drawnCard}
                     ownerId={me.id}
-                    onClick={handleDiscard}
+                    onClick={cardsDisabled ? undefined : handleDiscard}
                     draggable={false}
-                    className="w-[105.64px] h-[148.04px] cursor-pointer hover:scale-110 transition-transform duration-150"
+                    className={`w-[105.64px] h-[148.04px] transition-transform duration-150 ${cardsDisabled ? '' : 'cursor-pointer hover:scale-110'}`}
                   />
                 </div>
               </div>
@@ -654,30 +660,35 @@ export default function Game() {
           </div>
         </button>
 
-        {/* Leave table button — bottom right*/}
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center justify-center border-none transition-all duration-200 hover:scale-[1.04] active:scale-[0.97]"
-          style={{ position: 'absolute', borderRadius: 10, border: '3px solid white', right: 30, top: 830, width: 170, height: 40 }}
-        >
-          <div style={{
-            width: '100%', 
-            height: '100%',
-            boxSizing: 'border-box',
-            borderRadius: 8,
-            background: 'linear-gradient( #CD1F1F 25%, #670F0F 125%)',
-            border: '2.5px solid #4D0A0A',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{
-              fontSize: 20, fontWeight: 900, color: 'white',
-              WebkitTextStroke: '0.25rem #8F0C0C', paintOrder: 'stroke fill',
-              letterSpacing: '0.04em',
+        {/* Back to lobby button — bottom right. Only shown once the game has ended */}
+        {gameState.gamePhase === 'finished' && (
+          <button
+            onClick={() => navigate(`/room/${roomId}`)}
+            className="flex items-center justify-center border-none transition-all duration-200 hover:scale-[1.04] active:scale-[0.97]"
+            style={{
+              position: 'absolute', borderRadius: 10, border: '3px solid white', right: 30, top: 830, width: 190, height: 40,
+              animation: 'pulse-glow 1.6s ease-in-out infinite',
+            }}
+          >
+            <div style={{
+              width: '100%',
+              height: '100%',
+              boxSizing: 'border-box',
+              borderRadius: 8,
+              background: 'linear-gradient( #CD1F1F 25%, #670F0F 125%)',
+              border: '2.5px solid #4D0A0A',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              LEAVE TABLE
-            </span>
-          </div>
-        </button>
+              <span style={{
+                fontSize: 20, fontWeight: 900, color: 'white',
+                WebkitTextStroke: '0.25rem #8F0C0C', paintOrder: 'stroke fill',
+                letterSpacing: '0.04em',
+              }}>
+                BACK TO LOBBY
+              </span>
+            </div>
+          </button>
+        )}
 
         {/* Card power controls — below my name tag (768.585 + 63.90 height), no overlay */}
         {pendingCardPower && pendingCardPower.playerId === socket.id && me && (
