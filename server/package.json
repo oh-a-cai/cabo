@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "start": "NODE_ENV=production PORT=3000 node ./dist/server/src/index.js",
     "test": "NODE_ENV=test vitest",
+    "test:sockets": "ts-node ./tests/sockets.check.ts",
+    "load-test": "node ./scripts/load-test.js",
     "type-check": "tsc --noEmit"
   },
   "_moduleAliases": {
@@ -38,6 +40,7 @@
     "fs-extra": "^11.3.2",
     "jiti": "^2.6.0",
     "nodemon": "^3.1.10",
+    "socket.io-client": "^4.8.1",
     "supertest": "^7.1.4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",

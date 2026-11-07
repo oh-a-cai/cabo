@@ -1,6 +1,6 @@
 import logger from 'jet-logger';
 import { Server, Socket } from "socket.io";
-import { startGame, playerReady, drawCard, discardCard, confirmPowerSelection, finishPower, skipPower, swapCard, matchCard, giveCardToPlayer, callCabo } from "./gameEngine";
+import { startGame, playerReady, drawCard, discardCard, confirmPowerSelection, finishPower, skipPower, swapCard, matchCard, giveCardToPlayer, callCabo, removePlayer } from "./gameEngine";
 import type { GameState, Player, SocketResponse } from "./../../shared/types";
 
 function filterGameStateForPlayer(game: GameState, playerId: string): GameState {
@@ -32,20 +32,61 @@ function filterGameStateForPlayer(game: GameState, playerId: string): GameState 
   };
 }
 
-function emitGameState(io: Server, game: GameState) {
+function emitGameState(io: Server, game: GameState, event: "gameState" | "roomUpdate" = "gameState") {
   game.players.forEach(player => {
-    io.to(player.id).emit("gameState", filterGameStateForPlayer(game, player.id));
+    io.to(player.id).emit(event, filterGameStateForPlayer(game, player.id));
   });
+}
+
+function startCountdownIfAllReady(io: Server, game: GameState) {
+  if (game.gamePhase !== "setup" || game.countdownStartedAt || !game.players.every(p => p.ready)) {
+    return;
+  }
+
+  game.countdownStartedAt = Date.now();
+  setTimeout(() => {
+    if (game.gamePhase !== "setup") { // ended early because players left
+      return;
+    }
+    game.players.forEach(p => p.hand.forEach(card => card!.visibility = "hidden"));
+    game.gamePhase = "playing";
+    game.countdownStartedAt = undefined;
+    emitGameState(io, game);
+  }, 3000);
+}
+
+function removeFromRoom(io: Server, games: Map<string, GameState>, game: GameState, playerId: string) {
+  removePlayer(game, playerId);
+  if (game.players.length === 0) { // delete rooms with 0 people
+    games.delete(game.id);
+    return;
+  }
+
+  startCountdownIfAllReady(io, game);
+  emitGameState(io, game, "roomUpdate");
+  if (game.gamePhase !== "waiting") { // the game page only listens to gameState
+    emitGameState(io, game);
+  }
+}
+
+function generateRoomId(games: Map<string, GameState>): string | null {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const roomId = (1000 + Math.floor(Math.random() * 9000)).toString();
+    if (!games.has(roomId)) {
+      return roomId;
+    }
+  }
+  return null; // ponytail: 4 digits caps out near 9000 rooms, use a longer code if that's ever reached
 }
 
 export function initializeSockets(io: Server, games: Map<string, GameState>) {
   io.on("connection", (socket: Socket) => {
     logger.info(`User Connected: ${socket.id}`);
   
-    socket.on("createRoom", (playerName: string) => {
-      let roomId = Math.floor(Math.random() * 100).toString(); // generate random roomId between 0-99
-      while (games.has(roomId)) { // room id taken
-        roomId = Math.floor(Math.random() * 100).toString();
+    socket.on("createRoom", (playerName: string, callback: (res: SocketResponse) => void) => {
+      const roomId = generateRoomId(games);
+      if (!roomId) {
+        return callback?.({ error: "All rooms are in use. Please try again later." });
       }
       socket.join(roomId);
       
@@ -78,7 +119,8 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       };
       game.players.push(player);
 
-      io.to(roomId).emit("roomUpdate", game);
+      emitGameState(io, game, "roomUpdate");
+      callback?.({ success: true });
     });
   
     socket.on("joinRoom", (roomId: string, playerName: string, callback: (res: SocketResponse) => void) => {
@@ -112,7 +154,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         game.players.push(player);
       }
 
-      io.to(roomId).emit("roomUpdate", game);
+      emitGameState(io, game, "roomUpdate");
       callback?.({ success: true });
     });
   
@@ -122,16 +164,8 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.({ error: `Room Id ${roomId} does not exist.` });
       }
   
-      game.players = game.players.filter(p => p.id !== socket.id);
-      if (game.players.length === 0) { // delete rooms with 0 people
-        games.delete(roomId);
-      }
-      else {
-        game.players[0].isHost = true;
-      }
       socket.leave(roomId);
-  
-      io.to(roomId).emit("roomUpdate", game);
+      removeFromRoom(io, games, game, socket.id);
       callback?.({ success: true });
     });
 
@@ -157,16 +191,8 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
         return callback?.(response);
       }
 
+      startCountdownIfAllReady(io, game);
       emitGameState(io, game);
-    
-      if (game.countdownStartedAt) {
-        setTimeout(() => {
-          game.players.forEach(p => p.hand.forEach(card => card!.visibility = "hidden"));
-          game.gamePhase = "playing";
-          game.countdownStartedAt = undefined;
-          emitGameState(io, game);
-        }, 3000);
-      }
 
       callback?.({ success: true });
     });
@@ -316,17 +342,9 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
     });
     
     socket.on("disconnect", () => {
-      for (const [roomId, game] of games.entries()) {
-        const prev = game.players.length;
-        game.players = game.players.filter(p => p.id !== socket.id);
-        if (game.players.length !== prev) { // verify disconnect
-          if (game.players.length === 0) {
-            games.delete(roomId);
-          }
-          else { // if players still in room, then make new host
-            game.players[0].isHost = true;
-            io.to(roomId).emit("roomUpdate", game);
-          }
+      for (const game of games.values()) {
+        if (game.players.some(p => p.id === socket.id)) {
+          removeFromRoom(io, games, game, socket.id);
         }
       }
       logger.info(`User Disconnected: ${socket.id}`);

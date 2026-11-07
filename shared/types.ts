@@ -52,7 +52,7 @@ export interface GameState{
     matcherId?: string;
     isCardMatched: boolean;
     isCaboCalled: boolean;
-    caboCaller?: Player;
+    caboCaller?: Pick<Player, "id" | "name">;
     remainingTurns?: number;
     results: PlayerResult[];
     winner: string;

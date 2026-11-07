@@ -53,7 +53,8 @@ export function shuffleDeck(deck: Card[]): Card[] {
 }
   
 export function startGame(game: GameState) {
-  game.deck = shuffleDeck(createDeck());
+  // ids are sent to every player, so they must not reveal the card: number them after shuffling
+  game.deck = shuffleDeck(createDeck()).map((card, i) => ({ ...card, id: `c${i}` }));
   game.discardPile = [];
   game.turnId = 0;
   game.gamePhase = "setup";
@@ -88,10 +89,6 @@ export function playerReady(game: GameState, playerId: string): SocketResponse {
   }
 
   player.ready = true;
-
-  if (game.players.every(p => p.ready)) {
-    game.countdownStartedAt = Date.now();
-  }
 
   return { success: true };
 }
@@ -278,10 +275,12 @@ export function finishPower(game: GameState, playerId: string): SocketResponse {
   const power = game.pendingCardPower;
 
   if (power.type === "peekSelf") {
-    game.players.flatMap(p => p.hand).find(c => c?.id === power.myCardId)!.peekerId = undefined;
+    const card = game.players.flatMap(p => p.hand).find(c => c?.id === power.myCardId);
+    if (card) card.peekerId = undefined; // gone if matched away mid-peek
   }
   else if (power.type === "peekOther") {
-    game.players.flatMap(p => p.hand).find(c => c?.id === power.targetCardId)!.peekerId = undefined;
+    const card = game.players.flatMap(p => p.hand).find(c => c?.id === power.targetCardId);
+    if (card) card.peekerId = undefined; // gone if matched away mid-peek
   }
   else {
     const player = game.players.find(p => p.hand.some(c => c?.id === power.myCardId));
@@ -495,6 +494,66 @@ export function nextTurn(game: GameState) {
   }
 }
 
+// Removes a player and repairs any turn, power, match or final-round state that pointed at them.
+export function removePlayer(game: GameState, playerId: string) {
+  const index = game.players.findIndex(p => p.id === playerId);
+  if (index === -1) {
+    return;
+  }
+
+  const seats = game.players.length;
+  const [leaver] = game.players.splice(index, 1);
+  if (game.players.length === 0) {
+    return;
+  }
+  game.players[0].isHost = true;
+
+  if (game.gamePhase !== "setup" && game.gamePhase !== "playing") {
+    return;
+  }
+
+  const wasCurrent = index === game.turnId;
+
+  // a leaver who hadn't taken their final turn yet no longer uses one up
+  let finalRoundOver = false;
+  if (game.isCaboCalled && game.remainingTurns !== undefined) {
+    const seatsFromCurrent = (index - game.turnId + seats) % seats;
+    if (seatsFromCurrent <= game.remainingTurns) {
+      if (game.remainingTurns === 0) {
+        finalRoundOver = true;
+      }
+      else {
+        game.remainingTurns--;
+      }
+    }
+  }
+
+  if (index < game.turnId) {
+    game.turnId--;
+  }
+  game.turnId %= game.players.length;
+
+  if (wasCurrent) { // the next player starts a fresh turn in the same seat
+    game.pendingCardPower = undefined;
+    game.turnPhase = "drawing";
+    game.isCardMatched = false;
+    game.players.forEach(player => player.hasBurned = false);
+  }
+  else if (game.pendingCardPower?.targetCardId && leaver.hand.some(c => c?.id === game.pendingCardPower!.targetCardId)) {
+    game.pendingCardPower.targetCardId = undefined; // the current player picks another target
+  }
+
+  if (game.matcherId === playerId || game.matchReceiverId === playerId) {
+    game.matchReceiverId = undefined;
+    game.matchReceiverIndex = undefined;
+    game.matcherId = undefined;
+  }
+
+  if (game.players.length < 2 || finalRoundOver || game.players.some(p => p.hand.every(c => c === null))) {
+    endGame(game);
+  }
+}
+
 export function callCabo(game: GameState, playerId: string): SocketResponse {
   if (game.gamePhase !== "playing") {
     return { error: "Game not in progress" };
@@ -512,7 +571,7 @@ export function callCabo(game: GameState, playerId: string): SocketResponse {
   }
 
   game.isCaboCalled = true;
-  game.caboCaller = player;
+  game.caboCaller = { id: player.id, name: player.name };
   game.remainingTurns = game.players.length - 1;
   nextTurn(game);
 
@@ -540,9 +599,9 @@ export function endGame(game: GameState) {
     const caller = scores.find(p => p.player.id === game.caboCaller!.id);
     const minScore = Math.min(...scores.map(p => p.score));
 
-    if (caller!.score !== minScore) {
-      caller!.score += 10;
-      caller!.caboPenalty = true
+    if (caller && caller.score !== minScore) { // caller may have left the game
+      caller.score += 10;
+      caller.caboPenalty = true
     }
   }
 

@@ -10,11 +10,13 @@ export default function MainMenu() {
   const [nameSet, setNameSet] = useState(false);
 
   const createRoom = () => {
-    socket.emit('createRoom', name, () => {
-      console.log('Room Created:', room);
-    });
-    socket.once('roomUpdate', (game: GameState) => {
-      navigate(`/room/${game.id}`);
+    const onRoomUpdate = (game: GameState) => navigate(`/room/${game.id}`);
+    socket.once('roomUpdate', onRoomUpdate);
+    socket.emit('createRoom', name, (response: SocketResponse) => {
+      if ('error' in response) {
+        socket.off('roomUpdate', onRoomUpdate);
+        alert(response.error);
+      }
     });
   };
 
