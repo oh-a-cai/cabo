@@ -41,6 +41,7 @@ export interface GameState{
     id: string;
     players: Player[];
     deck: Card[];
+    deckCount?: number; // set on per-player views, which send this instead of the hidden deck
     discardPile: Card[];
     turnId: number;
     gamePhase: GamePhase;

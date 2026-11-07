@@ -251,7 +251,7 @@ export default function Game() {
   };
 
   // --- Derived values ---
-  const topDeckCard = gameState.deck.at(-1);
+  const deckCount = gameState.deckCount ?? 0;
   const topDiscardCard = gameState.discardPile.at(-1);
   const currentPlayer = gameState.players[gameState.turnId];
   const POWER_TEXT = {
@@ -362,10 +362,10 @@ export default function Game() {
 
         {/* Deck (left of hex center) */}
         <div style={{ position: 'absolute', top: 395.10, left: 800 - 92.71 }}>
-          {topDeckCard ? (
-            <CardImage
-              card={topDeckCard}
-              ownerId="deck"
+          {deckCount > 0 ? (
+            <img
+              src="/assets/Deck_of_cards/back.webp"
+              alt="back of card"
               onClick={canDraw ? handleDrawFromDeck : undefined}
               className={`w-[78.45px] h-[109.80px] shadow-md transition-transform duration-150 ${canDraw ? 'cursor-pointer hover:scale-110' : ''}`}
             />
@@ -374,7 +374,7 @@ export default function Game() {
               style={{ background: '#0A0918', border: '1px solid #3A3550' }} />
           )}
           <div style={{ color: '#22162D', fontWeight: 900, fontSize: 10, textAlign: 'center', marginTop: 3 }}>
-            DECK ({gameState.deck.length})
+            DECK ({deckCount})
           </div>
         </div>
 

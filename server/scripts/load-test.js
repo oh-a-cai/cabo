@@ -41,7 +41,7 @@ async function runWorker(roomCount) {
     bots.forEach(socket => socket.on('gameState', next => {
       state = next;
       if (awaiting > 0 && --awaiting === 0) delivered();
-      if (stats.stateSamples < 200) {
+      if (measuring && Math.random() < 0.02) { // sampled across whole games, since state size changes as a game goes on
         stats.stateBytes += JSON.stringify(next).length;
         stats.stateSamples++;
       }
@@ -215,7 +215,8 @@ async function runParent() {
     errors: sum('errors'),
     timeouts: sum('timeouts'),
     gamesFinished: sum('gamesFinished'),
-    kbPerState: Math.round(sum('stateBytes') / sum('stateSamples') / 102.4) / 10,
+    kbPerState: Math.round(sum('stateBytes') / sum('stateSamples') / 10.24) / 100,
+    stateSamples: sum('stateSamples'),
     botLoopP99: Math.round(Math.max(...stats.map(r => r.botLoopP99))),
     serverCpuPct: usageStart ? Math.round((usageEnd.cpuSeconds - usageStart.cpuSeconds) / elapsed * 100) : undefined,
     serverRssMb: usageEnd?.rssMb,

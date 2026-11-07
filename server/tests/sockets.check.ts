@@ -61,6 +61,8 @@ async function startPlaying(count: number) {
 }
 
 function assertNoHiddenCardsLeak(state: GameState, viewerId: string) {
+  assert.deepEqual(state.deck, []);
+  assert.ok(state.deckCount! > 0);
   const hidden = [...state.deck, ...state.players.flatMap(p => p.hand)].filter(c => c && c.visibility === 'hidden');
   assert.ok(hidden.length > 0);
   for (const card of hidden) {

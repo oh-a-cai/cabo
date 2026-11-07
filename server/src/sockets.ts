@@ -8,7 +8,8 @@ const MAX_NAME_LENGTH = 30;
 function filterGameStateForPlayer(game: GameState, playerId: string): GameState {
   return {
     ...game,
-    deck: game.deck.map(card => ({ ...card, rank: "hidden" as any, suit: "hidden" as any, value: 0 })),
+    deck: [], // hide deck from players
+    deckCount: game.deck.length,
     players: game.players.map(player => ({
       ...player,
       hand: player.hand.map(card => {
