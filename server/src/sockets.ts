@@ -3,6 +3,8 @@ import { Server, Socket } from "socket.io";
 import { startGame, playerReady, drawCard, discardCard, confirmPowerSelection, finishPower, skipPower, swapCard, matchCard, giveCardToPlayer, callCabo, removePlayer } from "./gameEngine";
 import type { GameState, Player, SocketResponse } from "./../../shared/types";
 
+const MAX_NAME_LENGTH = 30;
+
 function filterGameStateForPlayer(game: GameState, playerId: string): GameState {
   return {
     ...game,
@@ -69,6 +71,10 @@ function removeFromRoom(io: Server, games: Map<string, GameState>, game: GameSta
   }
 }
 
+function isValidName(name: unknown) {
+  return typeof name === "string" && name.length <= MAX_NAME_LENGTH;
+}
+
 function generateRoomId(games: Map<string, GameState>): string | null {
   for (let attempt = 0; attempt < 100; attempt++) {
     const roomId = (1000 + Math.floor(Math.random() * 9000)).toString();
@@ -76,14 +82,32 @@ function generateRoomId(games: Map<string, GameState>): string | null {
       return roomId;
     }
   }
-  return null; // ponytail: 4 digits caps out near 9000 rooms, use a longer code if that's ever reached
+  return null;
 }
 
 export function initializeSockets(io: Server, games: Map<string, GameState>) {
   io.on("connection", (socket: Socket) => {
     logger.info(`User Connected: ${socket.id}`);
+
+    const on = (event: string, handler: (...args: any[]) => void) => {
+      socket.on(event, (...args: any[]) => {
+        try {
+          handler(...args);
+        }
+        catch (err) {
+          logger.err(err);
+          const callback = args[args.length - 1];
+          if (typeof callback === "function") {
+            callback({ error: "Invalid request" });
+          }
+        }
+      });
+    };
   
-    socket.on("createRoom", (playerName: string, callback: (res: SocketResponse) => void) => {
+    on("createRoom", (playerName: string, callback: (res: SocketResponse) => void) => {
+      if (!isValidName(playerName)) {
+        return callback?.({ error: "Invalid player name" });
+      }
       const roomId = generateRoomId(games);
       if (!roomId) {
         return callback?.({ error: "All rooms are in use. Please try again later." });
@@ -123,7 +147,10 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
   
-    socket.on("joinRoom", (roomId: string, playerName: string, callback: (res: SocketResponse) => void) => {
+    on("joinRoom", (roomId: string, playerName: string, callback: (res: SocketResponse) => void) => {
+      if (!isValidName(playerName)) {
+        return callback?.({ error: "Invalid player name" });
+      }
       const game = games.get(roomId);
       if(!game){ // room doesn't exist
         return callback?.({ error: `Room Id ${roomId} does not exist.` });
@@ -158,7 +185,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
   
-    socket.on("leaveRoom", (roomId: string, callback: (res: SocketResponse) => void) => {
+    on("leaveRoom", (roomId: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) { // room doesn't exist
         return callback?.({ error: `Room Id ${roomId} does not exist.` });
@@ -169,18 +196,22 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("startGame", (roomId: string) => {
+    on("startGame", (roomId: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
-        return;
+        return callback?.({ error: "Room not found" });
       }
     
-      startGame(game);
+      const response = startGame(game, socket.id);
+      if ("error" in response) {
+        return callback?.(response);
+      }
     
       emitGameState(io, game);
+      callback?.({ success: true });
     });
 
-    socket.on("playerReady", (roomId: string, callback: (res: SocketResponse) => void) => {
+    on("playerReady", (roomId: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -197,7 +228,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("drawCard", (roomId: string, source: string, callback: (res: SocketResponse) => void) => {
+    on("drawCard", (roomId: string, source: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -212,7 +243,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("discardCard", (roomId: string, callback: (res: SocketResponse) => void) => {
+    on("discardCard", (roomId: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -227,7 +258,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("confirmPower", (roomId: string, parameters: any, callback: (res: SocketResponse) => void) => {
+    on("confirmPower", (roomId: string, parameters: any, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -242,7 +273,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("finishPower", (roomId: string, callback: (res: SocketResponse) => void) => {
+    on("finishPower", (roomId: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -257,7 +288,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("skipPower", (roomId: string, callback: (res: SocketResponse) => void) => {
+    on("skipPower", (roomId: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -272,7 +303,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("swapCard", (roomId: string, cardId: string, callback: (res: SocketResponse) => void) => {
+    on("swapCard", (roomId: string, cardId: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -287,7 +318,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("matchCard", (roomId: string, cardId: string, callback: (res: SocketResponse) => void) => {
+    on("matchCard", (roomId: string, cardId: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -302,7 +333,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("giveCardToPlayer", (roomId: string, parameters: { myCardId: string }, callback: (res: SocketResponse) => void) => {
+    on("giveCardToPlayer", (roomId: string, parameters: { myCardId: string }, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -317,7 +348,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("callCabo", (roomId: string, callback: (res: SocketResponse) => void) => {
+    on("callCabo", (roomId: string, callback: (res: SocketResponse) => void) => {
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: "Room not found" });
@@ -332,7 +363,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.({ success: true });
     });
 
-    socket.on("getGameState", (roomId: string, callback) => { // listens for a ping
+    on("getGameState", (roomId: string, callback) => { // listens for a ping
       const game = games.get(roomId);
       if (!game) {
         return callback?.({ error: `Room ${roomId} does not exist.` });
@@ -341,7 +372,7 @@ export function initializeSockets(io: Server, games: Map<string, GameState>) {
       callback?.(filterGameStateForPlayer(game, socket.id)); // returns gameState as response
     });
     
-    socket.on("disconnect", () => {
+    on("disconnect", () => {
       for (const game of games.values()) {
         if (game.players.some(p => p.id === socket.id)) {
           removeFromRoom(io, games, game, socket.id);

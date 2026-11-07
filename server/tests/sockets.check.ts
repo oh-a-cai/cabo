@@ -202,6 +202,92 @@ const scenarios: Record<string, () => Promise<void>> = {
     await playing;
   },
 
+  async onlyHostCanStartAndNotMidGame() {
+    const { roomId, game, sockets } = await startPlaying(3);
+    game.gamePhase = 'waiting';
+    assert.ok('error' in await call(sockets[1], 'startGame', roomId));
+    assert.equal(game.gamePhase, 'waiting');
+    game.gamePhase = 'playing';
+    game.turnId = 1;
+    assert.ok('error' in await call(sockets[0], 'startGame', roomId));
+    assert.equal(game.turnId, 1);
+  },
+
+  async cannotCallCaboOutOfTurn() {
+    const { roomId, game, sockets } = await startPlaying(3);
+    assert.ok('error' in await call(sockets[1], 'callCabo', roomId));
+    assert.equal(game.isCaboCalled, false);
+    assert.equal(game.turnId, 0);
+  },
+
+  async cannotPeekTwice() {
+    const { roomId, game, sockets } = await startPlaying(3);
+    game.turnPhase = 'power';
+    game.pendingCardPower = { type: 'peekOther', playerId: sockets[0].id! };
+    const [first, second] = game.players[1].hand;
+    assert.deepEqual(await call(sockets[0], 'confirmPower', roomId, { targetCardId: first!.id }), { success: true });
+    assert.ok('error' in await call(sockets[0], 'confirmPower', roomId, { targetCardId: second!.id }));
+    assert.equal(second!.peekerId, undefined);
+  },
+
+  async powersMustTargetAnotherPlayer() {
+    const { roomId, game, sockets } = await startPlaying(3);
+    const mine = game.players[0].hand[0]!.id;
+    game.turnPhase = 'power';
+    game.pendingCardPower = { type: 'peekOther', playerId: sockets[0].id! };
+    assert.ok('error' in await call(sockets[0], 'confirmPower', roomId, { targetCardId: mine }));
+    game.pendingCardPower = { type: 'swap', playerId: sockets[0].id! };
+    assert.ok('error' in await call(sockets[0], 'confirmPower', roomId, { myCardId: mine, targetCardId: game.players[0].hand[1]!.id }));
+  },
+
+  async invalidDrawSourceIsRejected() {
+    const { roomId, game, sockets } = await startPlaying(3);
+    assert.ok('error' in await call(sockets[0], 'drawCard', roomId, 'nonsense'));
+    assert.equal(game.turnPhase, 'drawing');
+  },
+
+  async cannotGiveCardAfterGameEnds() {
+    const { roomId, game, sockets } = await startPlaying(3);
+    game.gamePhase = 'finished';
+    game.matchReceiverId = sockets[1].id;
+    game.matchReceiverIndex = 0;
+    game.matcherId = sockets[0].id;
+    const before = game.players[0].hand[0];
+    assert.ok('error' in await call(sockets[0], 'giveCardToPlayer', roomId, { myCardId: before!.id }));
+    assert.equal(game.players[0].hand[0], before);
+  },
+
+  async malformedPayloadsDontCrashTheServer() {
+    const { roomId, game, sockets } = await startPlaying(3);
+    game.turnPhase = 'power';
+    game.pendingCardPower = { type: 'peekSelf', playerId: sockets[0].id! };
+    assert.ok('error' in await call(sockets[0], 'confirmPower', roomId, null));
+    game.matchReceiverId = sockets[1].id;
+    game.matcherId = sockets[0].id;
+    assert.ok('error' in await call(sockets[0], 'giveCardToPlayer', roomId, null));
+  },
+
+  async nonFunctionCallbackDoesntCrashTheServer() {
+    const { roomId, sockets } = await startPlaying(3);
+    sockets[0].emit('drawCard', roomId, 'deck', 5);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    assert.ok('error' in await call(sockets[1], 'drawCard', roomId, 'deck'));
+  },
+
+  async invalidNamesAreRejected() {
+    const port = (httpServer.address() as AddressInfo).port;
+    const socket = connect(`http://localhost:${port}`, { transports: ['websocket'] });
+    clients.push(socket);
+    await wait(socket, 'connect');
+    assert.ok('error' in await call(socket, 'createRoom', 'x'.repeat(100_000)));
+    assert.ok('error' in await call(socket, 'createRoom', { not: 'a string' }));
+    assert.equal(games.size, 0);
+    const { roomId, game } = await startPlaying(2);
+    game.gamePhase = 'waiting';
+    assert.ok('error' in await call(socket, 'joinRoom', roomId, 'x'.repeat(100_000)));
+    assert.equal(game.players.length, 2);
+  },
+
   async hiddenCardsNeverLeak() {
     const { roomId, game, sockets } = await startPlaying(3);
     await call(sockets[0], 'callCabo', roomId);

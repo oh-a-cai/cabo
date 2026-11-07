@@ -52,7 +52,14 @@ export function shuffleDeck(deck: Card[]): Card[] {
   return deck;
 }
   
-export function startGame(game: GameState) {
+export function startGame(game: GameState, playerId: string): SocketResponse {
+  if (!game.players.find(p => p.id === playerId)?.isHost) {
+    return { error: "Only the host can start the game" };
+  }
+  if (game.gamePhase !== "waiting" && game.gamePhase !== "finished") {
+    return { error: "Game already in progress" };
+  }
+
   // ids are sent to every player, so they must not reveal the card: number them after shuffling
   game.deck = shuffleDeck(createDeck()).map((card, i) => ({ ...card, id: `c${i}` }));
   game.discardPile = [];
@@ -80,6 +87,8 @@ export function startGame(game: GameState) {
     player.hand[1]!.visibility = "owner";
     player.hand[3]!.visibility = "owner";
   }
+
+  return { success: true };
 }
 
 export function playerReady(game: GameState, playerId: string): SocketResponse {
@@ -94,6 +103,9 @@ export function playerReady(game: GameState, playerId: string): SocketResponse {
 }
 
 export function drawCard(game: GameState, playerId: string, source: string): SocketResponse {
+  if (source !== "deck" && source !== "discard") {
+    return { error: "Invalid draw source" };
+  }
   if (game.gamePhase !== "playing") {
     return { error: "Game not in progress" };
   }
@@ -220,6 +232,11 @@ export function confirmPowerSelection(game: GameState, playerId: string, paramet
   }
 
   const power = game.pendingCardPower;
+  const othersCards = game.players.filter(p => p.id !== playerId).flatMap(p => p.hand);
+
+  if ((power.type === "peekSelf" && power.myCardId) || (power.type === "peekOther" && power.targetCardId)) {
+    return { error: "Already peeking at a card" };
+  }
 
   if (power.type === "peekSelf") {
     const player = game.players.find(p => p.id === playerId);
@@ -235,7 +252,7 @@ export function confirmPowerSelection(game: GameState, playerId: string, paramet
     myCard.peekerId = playerId;
   }
   else if (power.type === "peekOther") {
-    const targetCard = game.players.flatMap(p => p.hand).find(c => c?.id === parameters.targetCardId);
+    const targetCard = othersCards.find(c => c?.id === parameters.targetCardId);
     if (!targetCard) {
       return { error: "Target card not found" };
     }
@@ -249,7 +266,7 @@ export function confirmPowerSelection(game: GameState, playerId: string, paramet
       return { error: "Player not found" };
     }
     const myCard = player.hand.find(c => c?.id === parameters.myCardId);
-    const targetCard = game.players.flatMap(p => p.hand).find(c => c?.id === parameters.targetCardId);
+    const targetCard = othersCards.find(c => c?.id === parameters.targetCardId);
     if (!myCard || !targetCard) {
       return { error: "Cards not found" };
     }
@@ -447,6 +464,9 @@ export function matchCard(game: GameState, playerId: string, cardId: string): So
 }
 
 export function giveCardToPlayer(game: GameState, playerId: string, myCardId: string): SocketResponse {
+  if (game.gamePhase !== "playing") {
+    return { error: "Game not in progress" };
+  }
   if (!game.matchReceiverId) {
     return { error: "No active match to give a card" };
   }
@@ -568,6 +588,9 @@ export function callCabo(game: GameState, playerId: string): SocketResponse {
   const player = game.players.find(p => p.id === playerId);
   if (!player) {
     return { error: "Player not found" };
+  }
+  if (game.players[game.turnId].id !== playerId) {
+    return { error: "Not your turn" };
   }
 
   game.isCaboCalled = true;

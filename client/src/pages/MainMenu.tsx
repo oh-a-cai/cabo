@@ -165,6 +165,7 @@ export default function MainMenu() {
                   minWidth: 0
                 }}
                 placeholder="enter nickname"
+                maxLength={30}
                 autoFocus
                 value={name}
                 onChange={(e) => { setName(e.target.value); setNameSet(false); }}
